@@ -63,7 +63,7 @@ Please let us know if you spot any errors in our implementation or have a useful
 
 ### License
 
-The Cesium plugin code is released under Apache 2.0 (see LICENSE.md)
+The **cesium-oculus-plugin** plugin code is released under Apache 2.0 (see LICENSE.md)
 
 This software will need to go and acquire third party software in order to work properly;
 and NICTA is not suggesting that downloading and using the third party software is necessarily

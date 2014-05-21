@@ -1,0 +1,7 @@
+[submodule "lib/cesium"]
+	path = lib/cesium
+	url = https://github.com/AnalyticalGraphicsInc/cesium.git
+	branch = postprocess-hook
+[submodule "lib/vr.js"]
+	path = lib/vr.js
+	url = https://github.com/benvanik/vr.js.git

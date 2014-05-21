@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Hello Virtual World!</title>
+
+<script src="lib/cesium/ThirdParty/requirejs-2.1.9/require.js"></script>
+<script>
+    require.config({
+        baseUrl : 'lib/cesium/Source',
+        waitSeconds : 60
+    });
+    </script>
+<script src="lib/vr.js/lib/vr.js"></script>
+<style>
+@import url(lib/cesium/Source/Widgets/widgets.css);
+
+body,html {
+	height: 100%;
+}
+
+body {
+	padding: 0;
+	border: 0;
+	margin: 0;
+	overflow: hidden;
+}
+
+#stereo div {
+	pointer-events: none;
+	height: 100%;
+	width: 50%;
+	border: 0px solid red;
+	margin-left: 0px;
+	float: left;
+}
+
+.eye {
+	float: left;
+	width: 50%;
+	height: 100%;
+	border: 0px solid red;
+}
+
+.fullSize {
+	display: block;
+	position: relative;
+	top: 0;
+	left: 0;
+	border: none;
+	width: 100%;
+	height: 100%;
+}
+</style>
+</head>
+<body>
+
+  <div style="width: 100%; height: 100%">
+    <div id="cesiumContainerLeft" class="eye"></div>
+    <div id="cesiumContainerRight" class="eye"></div>
+  </div>
+
+  <script src="src/index.js"></script>
+</body>
+</html>

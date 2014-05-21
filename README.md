@@ -42,7 +42,7 @@ multi-screen installations
 
 #### Postprocessing
 The Oculus reference shader provided in the Oculus SDK compensates for distortion and chromatic aberration.
-We have applied a minimally modification to the reference shader, which compensates for the coordinate system difference of rendering to a separate canvas for each eye.
+We have applied a minimal modification to the reference shader which compensates for the coordinate system difference of rendering to a separate canvas for each eye.
 Applying a postprocessing filter is facilitated in Cesium by using the postprocess-hook branch.
 
 #### Frustum offsetting
@@ -69,3 +69,5 @@ This software will need to go and acquire third party software in order to work 
 and NICTA is not suggesting that downloading and using the third party software is necessarily
 compliant with, or compatible with the Apache 2.0 license; and
 Use of the third party software is entirely at the discretion (and risk) of the licensee.
+
+[![NICTA](/images/nicta_logo.png)](https://www.nicta.com.au)

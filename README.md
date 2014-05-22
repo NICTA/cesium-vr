@@ -1,9 +1,10 @@
 cesium-oculus-plugin
 ====================
 
-A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support the Oculus VR headset.
+A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support the [Oculus Rift VR headset](www.oculusvr.com/).
+Try the [live demo](http://nicta.github.io/cesium-oculus-plugin/) (click through the dialogs if you don't have an Oculus & VR.js handy).
 
-![screengrab](/images/screengrab.jpg)
+[![screengrab](/images/screengrab.jpg)](http://nicta.github.io/cesium-oculus-plugin/)
 
 ### Build
 
@@ -55,7 +56,7 @@ This allows us to access the hardware parameters of the Oculus device, along wit
 We may look to a different solution for this component in the future.
 
 #### Testing
-At time of writing we have tested **cesium-oculus-plugin** in Firefox on Windows.
+At time of writing we have tested **cesium-oculus-plugin** in Firefox on Windows with the Oculus Rift Development Kit 1.
 Other platforms and browsers were problematic due to issues getting VR.js to work.
 
 #### Contributing

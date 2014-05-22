@@ -32,6 +32,7 @@ Try the [live demo](http://nicta.github.io/cesium-oculus-plugin/) (click through
 
 * (optional) Plug in your Oculus headset.  The code should still work even if you don't have one.
 * (optional) Install the [VR.js](https://github.com/benvanik/vr.js/tree/master) plugin and make sure it's working with your Oculus.
+* Hit F11 to make the browser fullscreen on your Oculus display.
 * The mouse can be used on the left eye to navigate.  Number keys take you to some pre-set locations.  Arrow keys allow some movement.
 
 ### About

@@ -1,4 +1,4 @@
-<img align="right" src="images/nicta_logo.png">
+<a href="http://nicta.com.au/"><img align="right" src="images/nicta_logo.png"></a>
 <br>
 
 cesium-oculus-plugin

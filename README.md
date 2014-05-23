@@ -1,3 +1,6 @@
+<a href="http://nicta.com.au/"><img align="right" src="images/nicta_logo.png"></a>
+<br>
+
 cesium-oculus-plugin
 ====================
 
@@ -71,5 +74,3 @@ This software will need to go and acquire third party software in order to work 
 and NICTA is not suggesting that downloading and using the third party software is necessarily
 compliant with, or compatible with the Apache 2.0 license; and
 Use of the third party software is entirely at the discretion (and risk) of the licensee.
-
-[![NICTA](/images/nicta_logo.png)](https://www.nicta.com.au)

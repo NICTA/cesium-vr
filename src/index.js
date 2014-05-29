@@ -12,6 +12,7 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
   var canvasR = document.createElement('canvas');
   canvasR.className = "fullSize";
   document.getElementById('cesiumContainerRight').appendChild(canvasR);
+  var contextR = canvasR.getContext('2d');
 
   var ellipsoid = Cesium.Ellipsoid.WGS84;
   var imageryUrl = 'lib/cesium/Source/Assets/Textures/';
@@ -25,7 +26,7 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
       return new Cesium.BingMapsImageryProvider({
         url : '//dev.virtualearth.net',
         mapStyle : Cesium.BingMapsStyle.AERIAL
-        // mapStyle : Cesium.BingMapsStyle.AERIAL_WITH_LABELS
+      // mapStyle : Cesium.BingMapsStyle.AERIAL_WITH_LABELS
       });
     }
   }
@@ -40,19 +41,26 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
     }
   }
 
-  function createScene(canvas, eye, hmd) {
-    var scene = new Cesium.Scene(canvas);
-    var primitives = scene.primitives;
+  function getParams(hmd, eye) {
+    var result = {};
 
-    scene.camera.frustum.fovy = Cesium.Math.toRadians(90.0);
+    result.postProcessFilter = new Cesium.CustomPostProcess(riftShader, RiftIO.getUniforms(hmd, eye));
 
     // Calculate offset as per Oculus SDK docs
     var viewCenter = hmd.screenSizeHorz * 0.25;
     var eyeProjectionShift = viewCenter - hmd.lensSeparationDistance * 0.5;
     var projectionCenterOffset = 4.0 * eyeProjectionShift / hmd.screenSizeHorz;
     projectionCenterOffset *= 0.5;
-    var frustumOffset = eye === 'left' ? -projectionCenterOffset : projectionCenterOffset;
-    scene.camera.frustum.setOffset(frustumOffset, 0.0);
+    result.frustumOffset = eye === 'left' ? -projectionCenterOffset : projectionCenterOffset;
+
+    return result;
+  }
+
+  function createScene(canvas, hmd) {
+    var scene = new Cesium.Scene(canvas);
+    var primitives = scene.primitives;
+
+    scene.camera.frustum.fovy = Cesium.Math.toRadians(90.0);
 
     var cb = new Cesium.Globe(ellipsoid);
     cb.imageryLayers.addImageryProvider(createImageryProvider());
@@ -76,12 +84,6 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
       positiveZ : skyBoxBaseUrl + '_pz.jpg',
       negativeZ : skyBoxBaseUrl + '_mz.jpg'
     });
-
-    var uniforms = RiftIO.getUniforms(hmd, eye);
-
-    if (postprocess) {
-      scene.customPostProcess = new Cesium.CustomPostProcess(riftShader, uniforms);
-    }
 
     return scene;
   }
@@ -116,24 +118,19 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
   var io = new RiftIO(run);
 
   function run(hmd) {
-
-    var sceneL = createScene(canvasL, 'left', hmd);
-    var sceneR = createScene(canvasR, 'right', hmd);
-
-    var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
-
-    // slave camera controller for right view
-    sceneR._screenSpaceCameraController = {
-      update : function() {
-        slaveCameraUpdate(sceneL.camera, sceneR.camera);
-      }
+    var params = {
+      "left" : getParams(hmd, "left"),
+      "right" : getParams(hmd, "right")
     };
 
-    var render = function(scene) {
-      scene.initializeFrame();
-      scene.render();
-    }
+    var scene = createScene(canvasL, hmd);
 
+    var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
+    /*
+     * // slave camera controller for right view
+     * sceneR._screenSpaceCameraController = { update : function() {
+     * slaveCameraUpdate(sceneL.camera, sceneR.camera); } };
+     */
     var getCameraParams = function(camera) {
       return {
         "position" : camera.position,
@@ -191,10 +188,27 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
       firstTime = false;
     }
 
+    function setSceneParams(scene, params) {
+      if (postprocess) {
+        scene.customPostProcess = params.postProcessFilter;
+      }
+      scene.camera.frustum.setOffset(params.frustumOffset, 0.0);
+    }
+
     var tick = function() {
-      applyOculusRotation(sceneL.camera, io.getRotation());
-      render(sceneL);
-      render(sceneR);
+      applyOculusRotation(scene.camera, io.getRotation());
+      
+      // Render right eye
+      setSceneParams(scene, params['right']);
+      scene.initializeFrame();
+      scene.render();
+      contextR.drawImage(canvasL, 0, 0);
+      
+      // Render left eye
+      setSceneParams(scene, params['left']);
+      scene.initializeFrame();
+      scene.render();
+      
       Cesium.requestAnimationFrame(tick);
     }
 
@@ -216,8 +230,8 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
     };
 
     var onResize = function() {
-      onResizeScene(canvasL, sceneL);
-      onResizeScene(canvasR, sceneR);
+      onResizeScene(canvasL, scene);
+      onResizeScene(canvasR, scene);
     };
 
     var moveForward = function(camera, amount) {
@@ -227,19 +241,19 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
     var onKeyDown = function(e) {
       // alert(JSON.stringify(e.keyCode));
       if (e.keyCode === 38) {
-        moveForward(sceneL.camera, 10.0);
+        moveForward(scene.camera, 10.0);
         e.preventDefault();
       }
       if (e.keyCode === 40) {
-        moveForward(sceneL.camera, -10.0);
+        moveForward(scene.camera, -10.0);
         e.preventDefault();
       }
       if (e.keyCode === 73)
-        alert(JSON.stringify(getCameraParams(sceneL.camera)));
+        alert(JSON.stringify(getCameraParams(scene.camera)));
       if (e.keyCode === 76)
-        levelTheCamera(sceneL.camera);
+        levelTheCamera(scene.camera);
       if (typeof locations[e.keyCode] !== 'undefined') {
-        setCameraParams(locations[e.keyCode], sceneL.camera);
+        setCameraParams(locations[e.keyCode], scene.camera);
       }
     }
 

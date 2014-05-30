@@ -1,4 +1,4 @@
-require([ 'Cesium', './src/riftShaderCA.js', './src/cesium-oculus.js', './src/locations.js' ], function(Cesium, riftShader, RiftIO, locations) {
+require([ 'Cesium', './src/cesium-oculus.js', './src/locations.js' ], function(Cesium, RiftIO, locations) {
 
   "use strict";
 
@@ -44,7 +44,7 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/cesium-oculus.js', './src/lo
   function getParams(hmd, eye) {
     var result = {};
 
-    result.postProcessFilter = new Cesium.CustomPostProcess(riftShader, RiftIO.getUniforms(hmd, eye));
+    result.postProcessFilter = new Cesium.CustomPostProcess(RiftIO.getShader(), RiftIO.getUniforms(hmd, eye));
 
     // Calculate offset as per Oculus SDK docs
     var viewCenter = hmd.screenSizeHorz * 0.25;

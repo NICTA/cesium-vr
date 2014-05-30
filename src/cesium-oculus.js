@@ -1,11 +1,14 @@
 "use strict";
 
-var RiftIO = (function() {
+var CesiumOculus = (function() {
 
-  var RiftIO = function(Cesium, callback) {
-    this.Cesium = Cesium;
+  var CesiumOculus = function(callback) {
     this.state = undefined;
     this.hmdInfo = undefined;
+    
+    this.firstTime = true;
+    this.refMtx = new Cesium.Matrix3();
+    this.cameraMatrix = new Cesium.Matrix3();
 
     var that = this;
     vr.load(function(error) {
@@ -49,11 +52,45 @@ var RiftIO = (function() {
           }
         };
       }
+
+      that.params = {
+        "left" : getParams(that.hmdInfo, 'left'),
+        "right" : getParams(that.hmdInfo, 'right')
+      };
+      
       if (typeof (callback) !== 'undefined') {
         callback(that.hmdInfo);
       }
     });
   };
+  
+  function getParams(hmd, eye) {
+    var result = {};
+
+    result.postProcessFilter = new Cesium.CustomPostProcess(CesiumOculus.getShader(), CesiumOculus.getUniforms(hmd, eye));
+
+    // Calculate offset as per Oculus SDK docs
+    var viewCenter = hmd.screenSizeHorz * 0.25;
+    var eyeProjectionShift = viewCenter - hmd.lensSeparationDistance * 0.5;
+    var projectionCenterOffset = 4.0 * eyeProjectionShift / hmd.screenSizeHorz;
+    projectionCenterOffset *= 0.5;
+    result.frustumOffset = eye === 'left' ? -projectionCenterOffset : projectionCenterOffset;
+
+    return result;
+  }
+  
+  CesiumOculus.prototype.setSceneParams = function(scene, eye) {
+    switch (eye) {
+    case "left":
+    case "right":
+      var p = this.params[eye];
+      scene.customPostProcess = p.postProcessFilter;
+      scene.camera.frustum.setOffset(p.frustumOffset, 0.0);
+      break;
+    default:
+      alert("developer error, incorrect eye");
+    }
+  }
 
   function pollState(state) {
     if (!vr.pollState(state)) {
@@ -61,19 +98,19 @@ var RiftIO = (function() {
     }
   }
 
-  RiftIO.prototype.toQuat = function(r) {
+  CesiumOculus.prototype.toQuat = function(r) {
     if (r[0] === 0 && r[1] === 0 && r[2] === 0 && r[3] === 0) {
-      return this.Cesium.Quaternion.IDENTITY;
+      return Cesium.Quaternion.IDENTITY;
     }
-    return new this.Cesium.Quaternion(r[0], r[1], r[2], r[3]);
+    return new Cesium.Quaternion(r[0], r[1], r[2], r[3]);
   }
 
-  RiftIO.prototype.getRotation = function() {
+  CesiumOculus.prototype.getRotation = function() {
     pollState(this.state);
     return this.toQuat(this.state.hmd.rotation);
   };
 
-  RiftIO.getUniforms = function(hmd, eye) {
+  CesiumOculus.getUniforms = function(hmd, eye) {
     var scale = 2.0;
     var scale2 = 1 / 1.6;
     var aspect = hmd.resolutionHorz / (2 * hmd.resolutionVert);
@@ -126,7 +163,7 @@ var RiftIO = (function() {
     return uniforms;
   }
 
-  RiftIO.getShader = function() {
+  CesiumOculus.getShader = function() {
     "use strict";
     return [
      "uniform vec2 Scale;",
@@ -167,8 +204,55 @@ var RiftIO = (function() {
      "  gl_FragColor = vec4(red, green, blue, 1.0);",
      "}"
    ].join("\n");
+  };
+
+  CesiumOculus.slaveCameraUpdate = function(master, slave, eyeOffset) {
+    var right = new Cesium.Cartesian3();
+
+    var eye = Cesium.Cartesian3.clone(master.position);
+    var target = Cesium.Cartesian3.clone(master.direction);
+    var up = Cesium.Cartesian3.clone(master.up);
+
+    Cesium.Cartesian3.cross(master.direction, master.up, right);
+
+    Cesium.Cartesian3.multiplyByScalar(right, eyeOffset, right);
+    Cesium.Cartesian3.add(eye, right, eye);
+
+    Cesium.Cartesian3.multiplyByScalar(target, 10000, target);
+    Cesium.Cartesian3.add(target, eye, target);
+
+    slave.lookAt(eye, target, up);
+  };
+
+  CesiumOculus.prototype.setCameraRotationMatrix = function(rotation, camera) {
+    camera.right = Cesium.Matrix3.getRow(rotation, 0);
+    camera.up = Cesium.Matrix3.getRow(rotation, 1);
+    camera.direction = Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2));
+  };
+
+  CesiumOculus.prototype.getCameraRotationMatrix = function(camera) {
+    var result = new Cesium.Matrix3();
+    Cesium.Matrix3.setRow(result, 0, camera.right, result);
+    Cesium.Matrix3.setRow(result, 1, camera.up, result);
+    Cesium.Matrix3.setRow(result, 2, Cesium.Cartesian3.negate(camera.direction), result);
+    return result;
+  };
+
+  CesiumOculus.prototype.applyOculusRotation = function(camera, rotation) {
+    var oculusRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation));
+    var sceneCameraMatrix = this.getCameraRotationMatrix(camera);
+    if (this.firstTime) {
+      Cesium.Matrix3.inverse(oculusRotationMatrix, this.refMtx);
+      Cesium.Matrix3.multiply(this.refMtx, sceneCameraMatrix, this.refMtx);
+    } else {
+      var cameraDelta = Cesium.Matrix3.multiply(Cesium.Matrix3.inverse(this.cameraMatrix), sceneCameraMatrix);
+      Cesium.Matrix3.multiply(this.refMtx, cameraDelta, this.refMtx);
+    }
+    Cesium.Matrix3.multiply(oculusRotationMatrix, this.refMtx, this.cameraMatrix);
+    this.setCameraRotationMatrix(this.cameraMatrix, camera);
+    this.firstTime = false;
   }
-  
-  return RiftIO;
+
+  return CesiumOculus;
 
 }());

@@ -9,7 +9,11 @@
         baseUrl : 'lib/cesium/Source',
         waitSeconds : 60
     });
-    </script>
+  var Cesium;
+  require([ 'Cesium' ], function(c) {
+    Cesium = c;
+  });
+</script>
 <script src="lib/vr.js/lib/vr.js"></script>
 <style>
 @import url(lib/cesium/Source/Widgets/widgets.css);

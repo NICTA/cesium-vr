@@ -1,4 +1,4 @@
-require([ 'Cesium', './src/locations.js' ], function(Cesium, locations) {
+require([ './src/locations.js' ], function( locations) {
 
   "use strict";
 
@@ -41,21 +41,6 @@ require([ 'Cesium', './src/locations.js' ], function(Cesium, locations) {
     }
   }
 
-  function getParams(hmd, eye) {
-    var result = {};
-
-    result.postProcessFilter = new Cesium.CustomPostProcess(RiftIO.getShader(), RiftIO.getUniforms(hmd, eye));
-
-    // Calculate offset as per Oculus SDK docs
-    var viewCenter = hmd.screenSizeHorz * 0.25;
-    var eyeProjectionShift = viewCenter - hmd.lensSeparationDistance * 0.5;
-    var projectionCenterOffset = 4.0 * eyeProjectionShift / hmd.screenSizeHorz;
-    projectionCenterOffset *= 0.5;
-    result.frustumOffset = eye === 'left' ? -projectionCenterOffset : projectionCenterOffset;
-
-    return result;
-  }
-
   function createScene(canvas, hmd) {
     var scene = new Cesium.Scene(canvas);
     var primitives = scene.primitives;
@@ -88,38 +73,9 @@ require([ 'Cesium', './src/locations.js' ], function(Cesium, locations) {
     return scene;
   }
 
-  var slaveCameraUpdate = function(master, slave, eyeOffset) {
-    var eye = new Cesium.Cartesian3();
-    var target = new Cesium.Cartesian3();
-    var up = new Cesium.Cartesian3();
-    var right = new Cesium.Cartesian3();
-
-    Cesium.Cartesian3.clone(master.position, eye);
-    Cesium.Cartesian3.clone(master.direction, target);
-    Cesium.Cartesian3.clone(master.up, up);
-
-    var eyeCart = new Cesium.Cartographic();
-    ellipsoid.cartesianToCartographic(eye, eyeCart);
-
-    Cesium.Cartesian3.cross(master.direction, master.up, right);
-
-    Cesium.Cartesian3.multiplyByScalar(right, eyeOffset, right);
-    Cesium.Cartesian3.add(eye, right, eye);
-
-    Cesium.Cartesian3.multiplyByScalar(target, 10000, target);
-    Cesium.Cartesian3.add(target, eye, target);
-
-    slave.lookAt(eye, target, up);
-  };
-
-  var io = new RiftIO(Cesium, run);
+  var cesiumOculus = new CesiumOculus(run);
 
   function run(hmd) {
-    var params = {
-      "left" : getParams(hmd, "left"),
-      "right" : getParams(hmd, "right")
-    };
-
     var scene = createScene(canvasL, hmd);
 
     var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
@@ -148,65 +104,25 @@ require([ 'Cesium', './src/locations.js' ], function(Cesium, locations) {
       firstTime = true;
     }
 
-    var getCameraRotationMatrix = function(camera) {
-      var result = new Cesium.Matrix3();
-      Cesium.Matrix3.setRow(result, 0, camera.right, result);
-      Cesium.Matrix3.setRow(result, 1, camera.up, result);
-      Cesium.Matrix3.setRow(result, 2, Cesium.Cartesian3.negate(camera.direction), result);
-      return result;
-    };
-
-    var setCameraRotationMatrix = function(rotation, camera) {
-      camera.right = Cesium.Matrix3.getRow(rotation, 0);
-      camera.up = Cesium.Matrix3.getRow(rotation, 1);
-      camera.direction = Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2));
-    };
-
-    var cameraMatrix = new Cesium.Matrix3();
-    var refMtx = new Cesium.Matrix3();
-    var firstTime = true;
-
-    var applyOculusRotation = function(camera, rotation) {
-      var oculusRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation));
-      var sceneCameraMatrix = getCameraRotationMatrix(camera);
-      if (firstTime) {
-        Cesium.Matrix3.inverse(oculusRotationMatrix, refMtx);
-        Cesium.Matrix3.multiply(refMtx, sceneCameraMatrix, refMtx);
-      } else {
-        var cameraDelta = Cesium.Matrix3.multiply(Cesium.Matrix3.inverse(cameraMatrix), sceneCameraMatrix);
-        Cesium.Matrix3.multiply(refMtx, cameraDelta, refMtx);
-      }
-      Cesium.Matrix3.multiply(oculusRotationMatrix, refMtx, cameraMatrix);
-      setCameraRotationMatrix(cameraMatrix, camera);
-      firstTime = false;
-    }
-
-    function setSceneParams(scene, params) {
-      if (postprocess) {
-        scene.customPostProcess = params.postProcessFilter;
-      }
-      scene.camera.frustum.setOffset(params.frustumOffset, 0.0);
-    }
-
     var tick = function() {
-      applyOculusRotation(scene.camera, io.getRotation());
+      cesiumOculus.applyOculusRotation(scene.camera, cesiumOculus.getRotation());
 
       var eyeSeparation = 1.0;
 
       // Render right eye
-      setSceneParams(scene, params['right']);
+      cesiumOculus.setSceneParams(scene, 'right');
       scene.initializeFrame();
       scene.render();
       contextR.drawImage(canvasL, 0, 0); // Copy to right eye canvas
 
       // Render left eye
       var originalCamera = scene.camera.clone()
-      slaveCameraUpdate(originalCamera, scene.camera, -eyeSeparation);
-      setSceneParams(scene, params['left']);
+      CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, -eyeSeparation);
+      cesiumOculus.setSceneParams(scene, 'left');
       scene.initializeFrame();
       scene.render();
 
-      slaveCameraUpdate(originalCamera, scene.camera, 0.0);
+      CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, 0.0);
       Cesium.requestAnimationFrame(tick);
     }
 

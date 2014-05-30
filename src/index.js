@@ -1,4 +1,4 @@
-require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations.js' ], function(Cesium, riftShader, RiftIO, locations) {
+require([ 'Cesium', './src/riftShaderCA.js', './src/cesium-oculus.js', './src/locations.js' ], function(Cesium, riftShader, RiftIO, locations) {
 
   "use strict";
 

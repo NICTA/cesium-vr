@@ -123,11 +123,7 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
     var scene = createScene(canvasL, hmd);
 
     var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
-    /*
-     * // slave camera controller for right view
-     * sceneR._screenSpaceCameraController = { update : function() {
-     * slaveCameraUpdate(sceneL.camera, sceneR.camera); } };
-     */
+
     var getCameraParams = function(camera) {
       return {
         "position" : camera.position,

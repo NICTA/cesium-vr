@@ -1,7 +1,9 @@
-define([ 'Cesium' ], function(Cesium) {
-  "use strict";
+"use strict";
 
-  var RiftIO = function(callback) {
+var RiftIO = (function() {
+
+  var RiftIO = function(Cesium, callback) {
+    this.Cesium = Cesium;
     this.state = undefined;
     this.hmdInfo = undefined;
 
@@ -59,16 +61,16 @@ define([ 'Cesium' ], function(Cesium) {
     }
   }
 
-  function toQuat(r) {
+  RiftIO.prototype.toQuat = function(r) {
     if (r[0] === 0 && r[1] === 0 && r[2] === 0 && r[3] === 0) {
-      return Cesium.Quaternion.IDENTITY;
+      return this.Cesium.Quaternion.IDENTITY;
     }
-    return new Cesium.Quaternion(r[0], r[1], r[2], r[3]);
+    return new this.Cesium.Quaternion(r[0], r[1], r[2], r[3]);
   }
 
   RiftIO.prototype.getRotation = function() {
     pollState(this.state);
-    return toQuat(this.state.hmd.rotation);
+    return this.toQuat(this.state.hmd.rotation);
   };
 
   RiftIO.getUniforms = function(hmd, eye) {
@@ -123,7 +125,7 @@ define([ 'Cesium' ], function(Cesium) {
 
     return uniforms;
   }
-  
+
   RiftIO.getShader = function() {
     "use strict";
     return [
@@ -166,6 +168,7 @@ define([ 'Cesium' ], function(Cesium) {
      "}"
    ].join("\n");
   }
-
+  
   return RiftIO;
-});
+
+}());

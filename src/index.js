@@ -1,4 +1,4 @@
-require([ 'Cesium', './src/cesium-oculus.js', './src/locations.js' ], function(Cesium, RiftIO, locations) {
+require([ 'Cesium', './src/locations.js' ], function(Cesium, locations) {
 
   "use strict";
 
@@ -112,7 +112,7 @@ require([ 'Cesium', './src/cesium-oculus.js', './src/locations.js' ], function(C
     slave.lookAt(eye, target, up);
   };
 
-  var io = new RiftIO(run);
+  var io = new RiftIO(Cesium, run);
 
   function run(hmd) {
     var params = {

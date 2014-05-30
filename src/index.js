@@ -88,7 +88,7 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
     return scene;
   }
 
-  var slaveCameraUpdate = function(master, slave) {
+  var slaveCameraUpdate = function(master, slave, eyeOffset) {
     var eye = new Cesium.Cartesian3();
     var target = new Cesium.Cartesian3();
     var up = new Cesium.Cartesian3();
@@ -100,9 +100,6 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
 
     var eyeCart = new Cesium.Cartographic();
     ellipsoid.cartesianToCartographic(eye, eyeCart);
-
-    // var eyeOffset = 0.05 * eyeCart.height;
-    var eyeOffset = 20.0;
 
     Cesium.Cartesian3.cross(master.direction, master.up, right);
 
@@ -197,18 +194,23 @@ require([ 'Cesium', './src/riftShaderCA.js', './src/riftIO.js', './src/locations
 
     var tick = function() {
       applyOculusRotation(scene.camera, io.getRotation());
-      
+
+      var eyeSeparation = 1.0;
+
       // Render right eye
       setSceneParams(scene, params['right']);
       scene.initializeFrame();
       scene.render();
-      contextR.drawImage(canvasL, 0, 0);
-      
+      contextR.drawImage(canvasL, 0, 0); // Copy to right eye canvas
+
       // Render left eye
+      var originalCamera = scene.camera.clone()
+      slaveCameraUpdate(originalCamera, scene.camera, -eyeSeparation);
       setSceneParams(scene, params['left']);
       scene.initializeFrame();
       scene.render();
-      
+
+      slaveCameraUpdate(originalCamera, scene.camera, 0.0);
       Cesium.requestAnimationFrame(tick);
     }
 

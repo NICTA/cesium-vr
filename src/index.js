@@ -41,7 +41,7 @@ require([ './src/locations.js' ], function( locations) {
     }
   }
 
-  function createScene(canvas, hmd) {
+  function createScene(canvas) {
     var scene = new Cesium.Scene(canvas);
     var primitives = scene.primitives;
 
@@ -75,8 +75,8 @@ require([ './src/locations.js' ], function( locations) {
 
   var cesiumOculus = new CesiumOculus(run);
 
-  function run(hmd) {
-    var scene = createScene(canvasL, hmd);
+  function run() {
+    var scene = createScene(canvasL);
 
     var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 

@@ -36,7 +36,7 @@ var CanvasCopy = (function() {
   var CanvasCopy = function(canvas, useWebGL) {
     this.useWebGL = Cesium.defaultValue(useWebGL, true);
     if (this.useWebGL) {
-      this.gl = canvas.getContext("webgl") || canvasR.getContext("experimental-webgl");
+      this.gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
       if (!this.gl) {
         alert("error initializing webgl!");
       }
@@ -49,7 +49,7 @@ var CanvasCopy = (function() {
   CanvasCopy.prototype.copy = function(srcCanvas) {
     if (this.useWebGL) {
       var gl = this.gl;
-      gl.viewport(0, 0, canvasL.width, canvasL.height);
+      gl.viewport(0, 0, srcCanvas.width, srcCanvas.height);
       gl.useProgram(this.shaderProgram);
 
       var texture = gl.createTexture();

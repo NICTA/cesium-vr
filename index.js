@@ -2,6 +2,7 @@
 
 var lofi = false;
 var postprocess = true;
+var webglCopy = true;
 
 var canvasL = document.createElement('canvas');
 canvasL.className = "fullSize";
@@ -10,7 +11,8 @@ document.getElementById('cesiumContainerLeft').appendChild(canvasL);
 var canvasR = document.createElement('canvas');
 canvasR.className = "fullSize";
 document.getElementById('cesiumContainerRight').appendChild(canvasR);
-var contextR = canvasR.getContext('2d');
+
+var canvasCopy = new CanvasCopy(canvasR, webglCopy);
 
 var ellipsoid = Cesium.Ellipsoid.WGS84;
 var imageryUrl = 'lib/cesium/Source/Assets/Textures/';
@@ -114,7 +116,8 @@ function run() {
     cesiumOculus.setSceneParams(scene, 'right');
     scene.initializeFrame();
     scene.render();
-    contextR.drawImage(canvasL, 0, 0); // Copy to right eye canvas
+
+    canvasCopy.copy(canvasL);
 
     // Render left eye
     var originalCamera = scene.camera.clone()

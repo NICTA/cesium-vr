@@ -8,7 +8,6 @@ var CesiumOculus = (function() {
     
     this.firstTime = true;
     this.refMtx = new Cesium.Matrix3();
-    this.cameraMatrix = new Cesium.Matrix3();
 
     var that = this;
     vr.load(function(error) {
@@ -224,13 +223,13 @@ var CesiumOculus = (function() {
     slave.lookAt(eye, target, up);
   };
 
-  CesiumOculus.prototype.setCameraRotationMatrix = function(rotation, camera) {
+  CesiumOculus.setCameraRotationMatrix = function(rotation, camera) {
     camera.right = Cesium.Matrix3.getRow(rotation, 0);
     camera.up = Cesium.Matrix3.getRow(rotation, 1);
     camera.direction = Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2));
   };
 
-  CesiumOculus.prototype.getCameraRotationMatrix = function(camera) {
+  CesiumOculus.getCameraRotationMatrix = function(camera) {
     var result = new Cesium.Matrix3();
     Cesium.Matrix3.setRow(result, 0, camera.right, result);
     Cesium.Matrix3.setRow(result, 1, camera.up, result);
@@ -238,18 +237,18 @@ var CesiumOculus = (function() {
     return result;
   };
 
-  CesiumOculus.prototype.applyOculusRotation = function(camera, rotation) {
+  CesiumOculus.prototype.applyOculusRotation = function(camera, prevCameraMatrix, rotation) {
     var oculusRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation));
-    var sceneCameraMatrix = this.getCameraRotationMatrix(camera);
+    var sceneCameraMatrix = CesiumOculus.getCameraRotationMatrix(camera);
     if (this.firstTime) {
       Cesium.Matrix3.inverse(oculusRotationMatrix, this.refMtx);
       Cesium.Matrix3.multiply(this.refMtx, sceneCameraMatrix, this.refMtx);
     } else {
-      var cameraDelta = Cesium.Matrix3.multiply(Cesium.Matrix3.inverse(this.cameraMatrix), sceneCameraMatrix);
+      var cameraDelta = Cesium.Matrix3.multiply(Cesium.Matrix3.inverse(prevCameraMatrix), sceneCameraMatrix);
       Cesium.Matrix3.multiply(this.refMtx, cameraDelta, this.refMtx);
     }
-    Cesium.Matrix3.multiply(oculusRotationMatrix, this.refMtx, this.cameraMatrix);
-    this.setCameraRotationMatrix(this.cameraMatrix, camera);
+    Cesium.Matrix3.multiply(oculusRotationMatrix, this.refMtx, prevCameraMatrix);
+    CesiumOculus.setCameraRotationMatrix(prevCameraMatrix, camera);
     this.firstTime = false;
   }
 

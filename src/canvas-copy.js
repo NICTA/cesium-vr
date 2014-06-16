@@ -5,8 +5,8 @@ var CanvasCopy = (function() {
     var vertexShaderSrc = [ "attribute vec2 a_position;",
                             "varying vec2 v_texCoord;",
                             "void main() {",
-                            "  v_texCoord = a_position;",
-                            "  gl_Position = vec4(a_position, 0, 1);",
+                            "  v_texCoord = vec2((a_position.x + 1.0) * 0.5, 1.0-(a_position.y + 1.0) * 0.5);",
+                            "  gl_Position = vec4(a_position, 0.0, 1.0);",
                             "}" ].join("\n");
     var vertexShader = gl.createShader(gl.VERTEX_SHADER);
     gl.shaderSource(vertexShader, vertexShaderSrc);
@@ -16,8 +16,7 @@ var CanvasCopy = (function() {
                              "uniform sampler2D u_image;",
                              "varying vec2 v_texCoord;",
                              "void main() {",
-                             "  vec2 uv = vec2((v_texCoord.x+1.0)*0.5, 1.0-(v_texCoord.y+1.0)*0.5);",
-                             "  gl_FragColor = texture2D(u_image, uv);",
+                             "  gl_FragColor = texture2D(u_image, v_texCoord);",
                              "}"].join("\n");
     var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fragmentShader, fragmentShaderSrc);
@@ -56,11 +55,11 @@ var CanvasCopy = (function() {
       var texture = gl.createTexture();
 
       gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcCanvas);
 
       var positionLocation = gl.getAttribLocation(this.shaderProgram, "a_position");

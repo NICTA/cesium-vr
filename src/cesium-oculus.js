@@ -1,6 +1,5 @@
-"use strict";
-
 var CesiumOculus = (function() {
+  "use strict";
 
   var CesiumOculus = function(callback) {
     this.state = undefined;
@@ -89,7 +88,7 @@ var CesiumOculus = (function() {
     default:
       alert("developer error, incorrect eye");
     }
-  }
+  };
 
   function pollState(state) {
     if (!vr.pollState(state)) {
@@ -102,7 +101,7 @@ var CesiumOculus = (function() {
       return Cesium.Quaternion.IDENTITY;
     }
     return new Cesium.Quaternion(r[0], r[1], r[2], r[3]);
-  }
+  };
 
   CesiumOculus.prototype.getRotation = function() {
     pollState(this.state);
@@ -115,7 +114,7 @@ var CesiumOculus = (function() {
     var aspect = hmd.resolutionHorz / (2 * hmd.resolutionVert);
     var r = -1.0 - (4 * (hmd.screenSizeHorz / 4 - hmd.lensSeparationDistance / 2) / hmd.screenSizeHorz);
     var distScale = (hmd.distortionK[0] + hmd.distortionK[1] * Math.pow(r, 2) + hmd.distortionK[2] * Math.pow(r, 4) + hmd.distortionK[3] * Math.pow(r, 6));
-    var lensCenterOffset = 4 * (.25 * hmd.screenSizeHorz - .5 * hmd.lensSeparationDistance) / hmd.screenSizeHorz;
+    var lensCenterOffset = 4 * (0.25 * hmd.screenSizeHorz - 0.5 * hmd.lensSeparationDistance) / hmd.screenSizeHorz;
     var uniforms = {
       LensCenter : function() {
         return {
@@ -133,13 +132,13 @@ var CesiumOculus = (function() {
         return {
           x : 1.0 / distScale,
           y : 1.0 * aspect / distScale
-        }
+        };
       },
       ScaleIn : function() {
         return {
           x : 1.0,
           y : 1.0 / aspect
-        }
+        };
       },
       HmdWarpParam : function() {
         return {
@@ -147,7 +146,7 @@ var CesiumOculus = (function() {
           y : hmd.distortionK[1],
           z : hmd.distortionK[2],
           w : hmd.distortionK[3]
-        }
+        };
       },
       ChromAbParam : function() {
         return {
@@ -155,15 +154,14 @@ var CesiumOculus = (function() {
           y : hmd.chromaAbCorrection[1],
           z : hmd.chromaAbCorrection[2],
           w : hmd.chromaAbCorrection[3]
-        }
+        };
       }
     };
 
     return uniforms;
-  }
+  };
 
   CesiumOculus.getShader = function() {
-    "use strict";
     return [
      "uniform vec2 Scale;",
      "uniform vec2 ScaleIn;",
@@ -250,7 +248,7 @@ var CesiumOculus = (function() {
     Cesium.Matrix3.multiply(oculusRotationMatrix, this.refMtx, prevCameraMatrix);
     CesiumOculus.setCameraRotationMatrix(prevCameraMatrix, camera);
     this.firstTime = false;
-  }
+  };
 
   return CesiumOculus;
 

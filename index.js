@@ -2,7 +2,6 @@
 
 var lofi = false;
 var postprocess = true;
-var webglCopy = true;
 
 var canvasL = document.createElement('canvas');
 canvasL.className = "fullSize";
@@ -12,7 +11,7 @@ var canvasR = document.createElement('canvas');
 canvasR.className = "fullSize";
 document.getElementById('cesiumContainerRight').appendChild(canvasR);
 
-var canvasCopy = new CanvasCopy(canvasR, webglCopy);
+var canvasCopy = new CanvasCopy(canvasR, false);
 
 var ellipsoid = Cesium.Ellipsoid.WGS84;
 var imageryUrl = 'lib/cesium/Source/Assets/Textures/';
@@ -140,7 +139,7 @@ function run() {
   var onResizeScene = function(canvas, scene) {
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
-    var supersample = 1.5;
+    var supersample = 1.3;
     var width = canvas.clientWidth * supersample;
     var height = canvas.clientHeight * supersample;
 

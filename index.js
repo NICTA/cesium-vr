@@ -122,7 +122,6 @@ function run() {
     var originalCamera = scene.camera.clone()
     CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, -eyeSeparation);
     cesiumOculus.setSceneParams(scene, 'left');
-    scene.initializeFrame();
     scene.render();
 
     // Restore state
@@ -139,7 +138,7 @@ function run() {
   var onResizeScene = function(canvas, scene) {
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
-    var supersample = 1.3;
+    var supersample = 1.5;
     var width = canvas.clientWidth * supersample;
     var height = canvas.clientHeight * supersample;
 

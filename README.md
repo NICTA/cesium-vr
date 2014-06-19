@@ -19,12 +19,12 @@ Try the [live demo](http://nicta.github.io/cesium-oculus-plugin/) (click through
         git submodule init
         git submodule update
 
-3. Build Cesium
+3. Build Cesium (optional, a built version is included)
 
         cd ~/git/cesium-oculus-plugin
         cd lib/cesium
-        ./Tools/apache-ant-1.8.2/bin/ant
-
+        ./Tools/apache-ant-1.8.2/bin/ant minify
+        # Now copy or symlink the Build dir to ../cesium-build
 
 ### Use
 

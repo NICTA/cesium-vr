@@ -41,9 +41,15 @@ Try the [live demo](http://nicta.github.io/cesium-oculus-plugin/) (click through
 ### About
 
 #### Stereo Rendering
-There is a simple master/slave setup between two separate scene and canvas elements.
-This has been kept naive for now and may also be of interest to other use cases such as
-multi-screen installations
+To render stereo images within Cesium using a single scene and dual canvases the workflow is as follows.
+
+For each frame:
+
+* Set scene and postprocess parameters for right eye.
+* Render into left eye canvas.
+* Canvas copy from left eye canvas to right eye canvas.
+* Set scene and postprocess patameters for left eye.
+* Render into left eye canvas.
 
 #### Postprocessing
 The Oculus reference shader provided in the Oculus SDK compensates for distortion and chromatic aberration.
@@ -60,8 +66,8 @@ This allows us to access the hardware parameters of the Oculus device, along wit
 We may look to a different solution for this component in the future.
 
 #### Testing
-At time of writing we have tested **cesium-oculus-plugin** in Firefox on Windows with the Oculus Rift Development Kit 1.
-Other platforms and browsers were problematic due to issues getting VR.js to work.
+At time of writing we have tested **cesium-oculus-plugin** in Chrome and Firefox on Windows with the Oculus Rift Development Kit 1.
+Stereo rendering should work on other platforms but VR.js may not.
 
 #### Contributing
 Please let us know if you spot any errors in our implementation or have a useful extension.  The best way to do this is via a pull request.

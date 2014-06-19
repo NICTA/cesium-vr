@@ -11,7 +11,7 @@ var canvasR = document.createElement('canvas');
 canvasR.className = "fullSize";
 document.getElementById('cesiumContainerRight').appendChild(canvasR);
 
-var canvasCopy = new CanvasCopy(canvasR, false);
+var canvasCopy = new CanvasCopy(canvasR, true);
 
 var ellipsoid = Cesium.Ellipsoid.WGS84;
 var imageryUrl = 'lib/cesium/Source/Assets/Textures/';
@@ -91,7 +91,7 @@ var setCameraParams = function(_, camera) {
 var levelTheCamera = function(camera) {
   Cesium.Cartesian3.normalize(camera.position, camera.up);
   Cartesian3.cross(camera.direction, camera.up, camera.right);
-}
+};
 
 var cesiumOculus = new CesiumOculus(run);
 
@@ -104,33 +104,35 @@ function run() {
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 
   var tick = function() {
-    // Store camera state
-    var cameraRotation = CesiumOculus.getCameraRotationMatrix(camera);
+    scene.initializeFrame();
 
+    // Store camera state
+    var originalCamera = camera.clone();
+
+    var cameraRotation = CesiumOculus.getCameraRotationMatrix(camera);
     if (typeof prevCameraRotation !== 'undefined') {
       cesiumOculus.applyOculusRotation(camera, prevCameraRotation, cesiumOculus.getRotation());
     }
+    prevCameraRotation = cameraRotation;
 
     // Render right eye
     cesiumOculus.setSceneParams(scene, 'right');
-    scene.initializeFrame();
     scene.render();
 
     canvasCopy.copy(canvasL);
 
     // Render left eye
-    var originalCamera = scene.camera.clone()
+    var originalCamera = scene.camera.clone();
     CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, -eyeSeparation);
     cesiumOculus.setSceneParams(scene, 'left');
     scene.render();
 
     // Restore state
     CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, 0.0);
-    CesiumOculus.setCameraRotationMatrix(cameraRotation, camera);
-    prevCameraRotation = cameraRotation;
+    CesiumOculus.setCameraState(originalCamera, camera);
 
     Cesium.requestAnimationFrame(tick);
-  }
+  };
 
   tick();
 
@@ -158,7 +160,7 @@ function run() {
 
   var moveForward = function(camera, amount) {
     Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, amount), camera.position);
-  }
+  };
 
   var onKeyDown = function(e) {
     // alert(JSON.stringify(e.keyCode));
@@ -177,7 +179,7 @@ function run() {
     if (typeof locations[e.keyCode] !== 'undefined') {
       setCameraParams(locations[e.keyCode], scene.camera);
     }
-  }
+  };
 
   window.addEventListener('resize', onResize, false);
   window.addEventListener('keydown', onKeyDown, false);

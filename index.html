@@ -2,14 +2,7 @@
 <html lang="en">
 <head>
 <title>Hello Virtual World!</title>
-
-<script src="lib/cesium/ThirdParty/requirejs-2.1.9/require.js"></script>
-<script>
-    require.config({
-        baseUrl : 'lib/cesium/Source',
-        waitSeconds : 60
-    });
-    </script>
+<script src="lib/cesium-build/Cesium/Cesium.js"></script>
 <script src="lib/vr.js/lib/vr.js"></script>
 <style>
 @import url(lib/cesium/Source/Widgets/widgets.css);
@@ -59,6 +52,13 @@ body {
     <div id="cesiumContainerRight" class="eye"></div>
   </div>
 
-  <script src="src/index.js"></script>
+  <!-- library -->
+  <script src="src/cesium-oculus.js"></script>
+  <script src="src/canvas-copy.js"></script>
+  
+  <!-- app -->
+  <script src="locations.js"></script>
+  <script src="index.js"></script>
+  
 </body>
 </html>

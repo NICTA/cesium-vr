@@ -11,7 +11,7 @@ var canvasR = document.createElement('canvas');
 canvasR.className = "fullSize";
 document.getElementById('cesiumContainerRight').appendChild(canvasR);
 
-var canvasCopy = new CanvasCopy(canvasR, true);
+var canvasCopy = new CanvasCopy(canvasR, false);
 
 var ellipsoid = Cesium.Ellipsoid.WGS84;
 var imageryUrl = 'lib/cesium/Source/Assets/Textures/';
@@ -44,7 +44,7 @@ function createScene(canvas) {
   var scene = new Cesium.Scene(canvas);
   var primitives = scene.primitives;
 
-  scene.camera.frustum.fovy = Cesium.Math.toRadians(90.0);
+  scene.camera.frustum.fovy = Cesium.Math.toRadians(100.0);
 
   var cb = new Cesium.Globe(ellipsoid);
   cb.imageryLayers.addImageryProvider(createImageryProvider());
@@ -98,37 +98,36 @@ var cesiumOculus = new CesiumOculus(run);
 function run() {
   var scene = createScene(canvasL);
   var camera = scene.camera;
-  var eyeSeparation = 2.0;
+  var eyeSeparation = 5.0;
   var prevCameraRotation;
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 
   var tick = function() {
+    // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
     scene.initializeFrame();
 
     // Store camera state
     var originalCamera = camera.clone();
 
-    var cameraRotation = CesiumOculus.getCameraRotationMatrix(camera);
-    if (typeof prevCameraRotation !== 'undefined') {
-      cesiumOculus.applyOculusRotation(camera, prevCameraRotation, cesiumOculus.getRotation());
-    }
-    prevCameraRotation = cameraRotation;
+    // Take into account user head rotation
+    cesiumOculus.applyOculusRotation(camera, CesiumOculus.getCameraRotationMatrix(camera), cesiumOculus.getRotation());
+    var modCamera = camera.clone();
 
     // Render right eye
+    CesiumOculus.slaveCameraUpdate(modCamera, eyeSeparation * 0.5, camera);
     cesiumOculus.setSceneParams(scene, 'right');
     scene.render();
 
     canvasCopy.copy(canvasL);
 
     // Render left eye
-    var originalCamera = scene.camera.clone();
-    CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, -eyeSeparation);
+    CesiumOculus.slaveCameraUpdate(modCamera, -eyeSeparation * 0.5, camera);
     cesiumOculus.setSceneParams(scene, 'left');
     scene.render();
 
     // Restore state
-    CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, 0.0);
+    CesiumOculus.slaveCameraUpdate(originalCamera, 0.0, camera);
     CesiumOculus.setCameraState(originalCamera, camera);
 
     Cesium.requestAnimationFrame(tick);

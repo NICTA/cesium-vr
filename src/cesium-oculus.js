@@ -203,7 +203,7 @@ var CesiumOculus = (function() {
    ].join("\n");
   };
 
-  CesiumOculus.slaveCameraUpdate = function(master, slave, eyeOffset) {
+  CesiumOculus.slaveCameraUpdate = function(master, eyeOffset, slave) {
     var right = new Cesium.Cartesian3();
 
     var eye = Cesium.Cartesian3.clone(master.position);

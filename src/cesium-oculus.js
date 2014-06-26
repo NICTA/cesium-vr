@@ -1,7 +1,12 @@
 var CesiumOculus = (function() {
   "use strict";
 
-  var CesiumOculus = function(callback) {
+  function defaultErrorHandler(msg) {
+    alert(msg);
+  }
+
+  var CesiumOculus = function(callback, errorHandler) {
+    this.errorHandler = typeof errorHandler === 'undefined' ? defaultErrorHandler : errorHandler;
     this.state = undefined;
     this.hmdInfo = undefined;
 
@@ -12,16 +17,16 @@ var CesiumOculus = (function() {
     vr.load(function(error) {
 
       if (error) {
-        alert('VR error:\n' + error.toString());
+        that.errorHandler(error.toString());
       }
 
       that.state = new vr.State();
-      pollState(that.state);
+      pollState(that.state, that.errorHandler);
 
       if (that.state.hmd.present) {
         that.hmdInfo = vr.getHmdInfo();
       } else {
-        alert("No head-mounted display present.\nUsing default parameters");
+        that.errorHandler("No head-mounted display present. Using default parameters");
         that.hmdInfo = {
           "deviceName" : "Oculus Rift DK1",
           "deviceManufacturer" : "Oculus VR",
@@ -86,13 +91,13 @@ var CesiumOculus = (function() {
       scene.camera.frustum.setOffset(p.frustumOffset, 0.0);
       break;
     default:
-      alert("developer error, incorrect eye");
+      this.errorHandler("developer error, incorrect eye");
     }
   };
 
-  function pollState(state) {
+  function pollState(state, errorHandler) {
     if (!vr.pollState(state)) {
-      alert("vr.js plugin not found/error polling");
+      errorHandler("vr.js plugin not found/error polling");
     }
   }
 
@@ -104,7 +109,7 @@ var CesiumOculus = (function() {
   };
 
   CesiumOculus.prototype.getRotation = function() {
-    pollState(this.state);
+    pollState(this.state, this.errorHandler);
     return this.toQuat(this.state.hmd.rotation);
   };
 

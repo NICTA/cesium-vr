@@ -229,14 +229,14 @@ var CesiumOculus = (function() {
   CesiumOculus.setCameraRotationMatrix = function(rotation, camera) {
     camera.right = Cesium.Matrix3.getRow(rotation, 0);
     camera.up = Cesium.Matrix3.getRow(rotation, 1);
-    camera.direction = Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2));
+    Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2), camera.direction);
   };
 
   CesiumOculus.getCameraRotationMatrix = function(camera) {
     var result = new Cesium.Matrix3();
     Cesium.Matrix3.setRow(result, 0, camera.right, result);
     Cesium.Matrix3.setRow(result, 1, camera.up, result);
-    Cesium.Matrix3.setRow(result, 2, Cesium.Cartesian3.negate(camera.direction), result);
+    Cesium.Matrix3.setRow(result, 2, Cesium.Cartesian3.negate(camera.direction, new Cesium.Cartesian3()), result);
     return result;
   };
 

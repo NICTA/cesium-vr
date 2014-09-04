@@ -227,9 +227,9 @@ var CesiumOculus = (function() {
   };
 
   CesiumOculus.setCameraRotationMatrix = function(rotation, camera) {
-    camera.right = Cesium.Matrix3.getRow(rotation, 0);
-    camera.up = Cesium.Matrix3.getRow(rotation, 1);
-    Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2), camera.direction);
+    Cesium.Matrix3.getRow(rotation, 0, camera.right);
+    Cesium.Matrix3.getRow(rotation, 1, camera.up);
+    Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2, camera.direction), camera.direction);
   };
 
   CesiumOculus.getCameraRotationMatrix = function(camera) {
@@ -240,6 +240,7 @@ var CesiumOculus = (function() {
     return result;
   };
 
+  // Not here!
   CesiumOculus.setCameraState = function(src, camera){
     camera.position = Cesium.Cartesian3.clone(src.position);
     camera.direction = Cesium.Cartesian3.clone(src.direction);
@@ -250,14 +251,16 @@ var CesiumOculus = (function() {
   };
 
   CesiumOculus.prototype.applyOculusRotation = function(camera, prevCameraMatrix, rotation) {
-    var oculusRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation));
+    var oculusRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Matrix3()));
     var sceneCameraMatrix = CesiumOculus.getCameraRotationMatrix(camera);
     if (this.firstTime) {
       Cesium.Matrix3.inverse(oculusRotationMatrix, this.refMtx);
       Cesium.Matrix3.multiply(this.refMtx, sceneCameraMatrix, this.refMtx);
     } else {
-      var cameraDelta = Cesium.Matrix3.multiply(Cesium.Matrix3.inverse(prevCameraMatrix), sceneCameraMatrix);
-      Cesium.Matrix3.multiply(this.refMtx, cameraDelta, this.refMtx);
+      var temp = new Cesium.Matrix3();
+      Cesium.Matrix3.inverse(prevCameraMatrix, temp);
+      Cesium.Matrix3.multiply(temp, sceneCameraMatrix, temp);
+      Cesium.Matrix3.multiply(this.refMtx, temp, this.refMtx);
     }
     Cesium.Matrix3.multiply(oculusRotationMatrix, this.refMtx, prevCameraMatrix);
     CesiumOculus.setCameraRotationMatrix(prevCameraMatrix, camera);

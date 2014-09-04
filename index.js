@@ -41,10 +41,10 @@ function createTerrainProvider() {
 }
 
 function createScene(canvas) {
-  var scene = new Cesium.Scene(canvas);
+  var scene = new Cesium.Scene({canvas : canvas});
   var primitives = scene.primitives;
 
-  scene.camera.frustum.fovy = Cesium.Math.toRadians(100.0);
+  scene.camera.frustum._fovy = Cesium.Math.toRadians(100.0);
 
   var cb = new Cesium.Globe(ellipsoid);
   cb.imageryLayers.addImageryProvider(createImageryProvider());

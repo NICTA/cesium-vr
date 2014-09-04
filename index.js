@@ -41,10 +41,10 @@ function createTerrainProvider() {
 }
 
 function createScene(canvas) {
-  var scene = new Cesium.Scene(canvas);
+  var scene = new Cesium.Scene({canvas : canvas});
   var primitives = scene.primitives;
 
-  scene.camera.frustum.fovy = Cesium.Math.toRadians(90.0);
+  scene.camera.frustum._fovy = Cesium.Math.toRadians(100.0);
 
   var cb = new Cesium.Globe(ellipsoid);
   cb.imageryLayers.addImageryProvider(createImageryProvider());
@@ -91,46 +91,47 @@ var setCameraParams = function(_, camera) {
 var levelTheCamera = function(camera) {
   Cesium.Cartesian3.normalize(camera.position, camera.up);
   Cartesian3.cross(camera.direction, camera.up, camera.right);
-}
+};
 
 var cesiumOculus = new CesiumOculus(run);
 
 function run() {
   var scene = createScene(canvasL);
   var camera = scene.camera;
-  var eyeSeparation = 2.0;
+  var eyeSeparation = 5.0;
   var prevCameraRotation;
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 
   var tick = function() {
-    // Store camera state
-    var cameraRotation = CesiumOculus.getCameraRotationMatrix(camera);
+    // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
+    scene.initializeFrame();
 
-    if (typeof prevCameraRotation !== 'undefined') {
-      cesiumOculus.applyOculusRotation(camera, prevCameraRotation, cesiumOculus.getRotation());
-    }
+    // Store camera state
+    var originalCamera = camera.clone();
+
+    // Take into account user head rotation
+    cesiumOculus.applyOculusRotation(camera, CesiumOculus.getCameraRotationMatrix(camera), cesiumOculus.getRotation());
+    var modCamera = camera.clone();
 
     // Render right eye
+    CesiumOculus.slaveCameraUpdate(modCamera, eyeSeparation * 0.5, camera);
     cesiumOculus.setSceneParams(scene, 'right');
-    scene.initializeFrame();
     scene.render();
 
     canvasCopy.copy(canvasL);
 
     // Render left eye
-    var originalCamera = scene.camera.clone()
-    CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, -eyeSeparation);
+    CesiumOculus.slaveCameraUpdate(modCamera, -eyeSeparation * 0.5, camera);
     cesiumOculus.setSceneParams(scene, 'left');
     scene.render();
 
     // Restore state
-    CesiumOculus.slaveCameraUpdate(originalCamera, scene.camera, 0.0);
-    CesiumOculus.setCameraRotationMatrix(cameraRotation, camera);
-    prevCameraRotation = cameraRotation;
+    CesiumOculus.slaveCameraUpdate(originalCamera, 0.0, camera);
+    CesiumOculus.setCameraState(originalCamera, camera);
 
     Cesium.requestAnimationFrame(tick);
-  }
+  };
 
   tick();
 
@@ -158,7 +159,7 @@ function run() {
 
   var moveForward = function(camera, amount) {
     Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, amount), camera.position);
-  }
+  };
 
   var onKeyDown = function(e) {
     // alert(JSON.stringify(e.keyCode));
@@ -177,7 +178,7 @@ function run() {
     if (typeof locations[e.keyCode] !== 'undefined') {
       setCameraParams(locations[e.keyCode], scene.camera);
     }
-  }
+  };
 
   window.addEventListener('resize', onResize, false);
   window.addEventListener('keydown', onKeyDown, false);

@@ -56,10 +56,7 @@ var CesiumOculus = (function() {
         "right" : that.hmdDevice.getEyeTranslation("right").x
       };
 
-      console.log("Got here...");
-
       if (typeof (callback) !== 'undefined') {
-        console.log("Got here.......");
         callback();
       }
     }
@@ -76,8 +73,7 @@ var CesiumOculus = (function() {
     switch (eye) {
     case "left":
     case "right":
-      var f = this.frustumOffset[eye];
-      scene.camera.frustum.setOffset(f, 0.0);
+      scene.camera.frustum.setOffset(this.frustumOffset[eye], 0.0);
       break;
     default:
       this.errorHandler("developer error, incorrect eye");

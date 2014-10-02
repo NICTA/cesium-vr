@@ -103,6 +103,18 @@ function run() {
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 
+  var container = document.getElementById('container');
+
+  if (container.mozRequestFullScreen) {
+      container.mozRequestFullScreen({
+          vrDisplay: cesiumOculus.hmdDevice
+      });
+  } else if (container.webkitRequestFullscreen) {
+      container.webkitRequestFullscreen({
+          vrDisplay: cesiumOculus.hmdDevice
+      });
+  }
+
   var tick = function() {
     // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
     scene.initializeFrame();

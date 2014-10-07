@@ -95,16 +95,7 @@ var levelTheCamera = function(camera) {
 
 var cesiumOculus = new CesiumOculus(run);
 
-function run() {
-  var scene = createScene(canvasL);
-  var camera = scene.camera;
-  var eyeSeparation = 5.0;
-  var prevCameraRotation;
-
-  var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
-
-  var container = document.getElementById('container');
-
+var fullscreen = function() {
   if (container.mozRequestFullScreen) {
       container.mozRequestFullScreen({
           vrDisplay: cesiumOculus.hmdDevice
@@ -114,6 +105,17 @@ function run() {
           vrDisplay: cesiumOculus.hmdDevice
       });
   }
+};
+
+function run() {
+  var scene = createScene(canvasL);
+  var camera = scene.camera;
+  var eyeSeparation = 5.0;
+  var prevCameraRotation;
+
+  var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
+
+  var container = document.getElementById('container');
 
   var tick = function() {
     // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
@@ -183,10 +185,15 @@ function run() {
       moveForward(scene.camera, -10.0);
       e.preventDefault();
     }
-    if (e.keyCode === 73)
+    if (e.keyCode === 73) {
       alert(JSON.stringify(getCameraParams(scene.camera)));
-    if (e.keyCode === 76)
+    }
+    if (e.keyCode === 76) {
       levelTheCamera(scene.camera);
+    }
+    if (e.keyCode === 13) {
+      fullscreen();
+    }
     if (typeof locations[e.keyCode] !== 'undefined') {
       setCameraParams(locations[e.keyCode], scene.camera);
     }

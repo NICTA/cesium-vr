@@ -147,7 +147,7 @@ function run() {
   var onResizeScene = function(canvas, scene) {
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
-    var supersample = 1.5;
+    var supersample = oculusEnabled ? 1.5 : 1.0;
     var width = canvas.clientWidth * supersample;
     var height = canvas.clientHeight * supersample;
 
@@ -161,8 +161,8 @@ function run() {
   };
 
   var onResize = function() {
-    onResizeScene(canvasL, scene);
     onResizeScene(canvasR, scene);
+    onResizeScene(canvasL, scene);
   };
 
   var moveForward = function(camera, amount) {
@@ -185,7 +185,9 @@ function run() {
       levelTheCamera(scene.camera);
     if (e.keyCode === 84){
       oculusEnabled = !oculusEnabled;
-      document.getElementById("cesiumContainerRight").style.visibility= oculusEnabled ? "visible" : "hidden";
+      document.getElementById("cesiumContainerRight").style.visibility = oculusEnabled ? "visible" : "hidden";
+      document.getElementById("cesiumContainerLeft").style.width = oculusEnabled ? "50%" : "100%";
+      onResize();
     }
     if (typeof locations[e.keyCode] !== 'undefined') {
       setCameraParams(locations[e.keyCode], scene.camera);

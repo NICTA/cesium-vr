@@ -69,6 +69,19 @@ function createScene(canvas) {
     negativeZ : skyBoxBaseUrl + '_mz.jpg'
   });
 
+  var modelMatrix = Cesium.Transforms.northEastDownToFixedFrame(Cesium.Cartesian3.fromDegrees(-123.0744619, 44.0503706, 500));
+  var model = Cesium.Model.fromGltf({
+    url : 'lib/cesium/Apps/SampleData/models/CesiumAir/Cesium_Air.gltf',
+    modelMatrix : modelMatrix,
+    scale : 20.0,
+    minimumPixelSize : 50,
+  });
+  scene.primitives.add(model);
+  // OIT is enabled when you add the model but is currently incompatible with postprocessing filters
+  scene._oit.isSupported = function() {
+    return false;
+  }
+
   return scene;
 }
 

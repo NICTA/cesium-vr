@@ -44,7 +44,7 @@ function createScene(canvas) {
   var scene = new Cesium.Scene({canvas : canvas});
   var primitives = scene.primitives;
 
-  scene.camera.frustum._fovy = Cesium.Math.toRadians(100.0);
+  scene.camera.frustum._fovy = Cesium.Math.toRadians(120.0);
 
   var cb = new Cesium.Globe(ellipsoid);
   cb.imageryLayers.addImageryProvider(createImageryProvider());
@@ -110,7 +110,7 @@ var fullscreen = function() {
 function run() {
   var scene = createScene(canvasL);
   var camera = scene.camera;
-  var eyeSeparation = 5.0;
+  var eyeSeparation = 50.0;
   var prevCameraRotation;
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
@@ -163,7 +163,7 @@ function run() {
 
     canvas.width = width;
     canvas.height = height;
-    scene.camera.frustum.aspectRatio = width / height;
+    scene.camera.frustum.aspectRatio = width / height; // TODO: Aspect ratio?
   };
 
   var onResize = function() {

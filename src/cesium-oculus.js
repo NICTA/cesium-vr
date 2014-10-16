@@ -52,8 +52,8 @@ var CesiumOculus = (function() {
       }
 
       that.frustumOffset = {
-        "left" : that.hmdDevice.getEyeTranslation("left").x,
-        "right" : that.hmdDevice.getEyeTranslation("right").x
+        "left" : -that.hmdDevice.getEyeTranslation("left").x,
+        "right" : -that.hmdDevice.getEyeTranslation("right").x
       };
 
       if (typeof (callback) !== 'undefined') {

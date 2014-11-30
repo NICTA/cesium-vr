@@ -61,7 +61,7 @@ var CesiumOculus = (function() {
       }
     }
 
-    // Slight disrepancy in the api for WebVR currently.
+    // Slight discrepancy in the api for WebVR currently.
     if (navigator.getVRDevices) {
       navigator.getVRDevices().then(EnumerateVRDevices);
     } else if (navigator.mozGetVRDevices) {
@@ -88,7 +88,6 @@ var CesiumOculus = (function() {
   };
 
   CesiumOculus.prototype.getRotation = function() {
-    // pollState(this.state, this.errorHandler);
     return this.toQuat(this.sensorDevice.getState().orientation);
   };
 
@@ -132,6 +131,12 @@ var CesiumOculus = (function() {
     camera.right = Cesium.Cartesian3.clone(src.right);
     camera.transform = Cesium.Matrix4.clone(src.transform);
     camera.frustum = src.frustum.clone();
+  };
+
+  CesiumOculus.prototype.levelCamera = function(camera) {
+    this.firstTime = true;
+    Cesium.Cartesian3.normalize(camera.position, camera.up);
+    Cesium.Cartesian3.cross(camera.direction, camera.up, camera.right);
   };
 
   CesiumOculus.prototype.applyOculusRotation = function(camera, prevCameraMatrix, rotation) {

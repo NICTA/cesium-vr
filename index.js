@@ -88,12 +88,9 @@ var setCameraParams = function(_, camera) {
   camera.direction = _.direction;
 };
 
-var levelTheCamera = function(camera) {
-  Cesium.Cartesian3.normalize(camera.position, camera.up);
-  Cartesian3.cross(camera.direction, camera.up, camera.right);
-};
-
 var cesiumOculus = new CesiumOculus(run);
+
+var container = document.getElementById('container');
 
 var fullscreen = function() {
   if (container.mozRequestFullScreen) {
@@ -115,7 +112,13 @@ function run() {
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 
-  var container = document.getElementById('container');
+  var forwardVelocity = 0;
+  var strafeVelocity = 0;
+
+  var move = function(camera, forwardVelocity, strafeVelocity) {
+    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, forwardVelocity, new Cesium.Cartesian3()), camera.position);
+    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.right, strafeVelocity, new Cesium.Cartesian3()), camera.position);
+  };
 
   var tick = function() {
     // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
@@ -176,7 +179,6 @@ function run() {
   };
 
   var onKeyDown = function(e) {
-    // alert(JSON.stringify(e.keyCode));
     if (e.keyCode === 38) {
       moveForward(scene.camera, 10.0);
       e.preventDefault();
@@ -189,7 +191,7 @@ function run() {
       alert(JSON.stringify(getCameraParams(scene.camera)));
     }
     if (e.keyCode === 76) {
-      levelTheCamera(scene.camera);
+      cesiumOculus.levelCamera(scene.camera);
     }
     if (e.keyCode === 13) {
       fullscreen();

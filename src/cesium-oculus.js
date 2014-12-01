@@ -56,7 +56,7 @@ var CesiumOculus = (function() {
         "right" : -that.hmdDevice.getEyeTranslation("right").x
       };
 
-      if (typeof (callback) !== 'undefined') {
+      if (typeof callback !== 'undefined') {
         callback();
       }
     }
@@ -64,7 +64,7 @@ var CesiumOculus = (function() {
     // Slight discrepancy in the api for WebVR currently.
     if (navigator.getVRDevices) {
       navigator.getVRDevices().then(EnumerateVRDevices);
-    } else if (navigator.mozGetVRDevices) {
+    } else if (navigator.mozGetVRDevices) { // TODO: Still required?
       navigator.mozGetVRDevices(EnumerateVRDevices);
     }
   };
@@ -88,7 +88,14 @@ var CesiumOculus = (function() {
   };
 
   CesiumOculus.prototype.getRotation = function() {
-    return this.toQuat(this.sensorDevice.getState().orientation);
+    var state = this.sensorDevice.getState();
+
+    if (state.orientation !== null) {
+      return this.toQuat(state.orientation);
+    } else {
+      // No orientation from device.
+      return this.toQuat({x : 0, y : 0, z : 0, w : 0});
+    }
   };
 
   CesiumOculus.slaveCameraUpdate = function(master, eyeOffset, slave) {

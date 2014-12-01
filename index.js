@@ -93,14 +93,18 @@ var cesiumOculus = new CesiumOculus(run);
 var container = document.getElementById('container');
 
 var fullscreen = function() {
-  if (container.mozRequestFullScreen) {
-      container.mozRequestFullScreen({
-          vrDisplay: cesiumOculus.hmdDevice
-      });
+  if (container.requestFullscreen) {
+    container.requestFullscreen({
+      vrDisplay: cesiumOculus.hmdDevice
+    });
+  } else if (container.mozRequestFullScreen) {
+    container.mozRequestFullScreen({
+      vrDisplay: cesiumOculus.hmdDevice
+    });
   } else if (container.webkitRequestFullscreen) {
-      container.webkitRequestFullscreen({
-          vrDisplay: cesiumOculus.hmdDevice
-      });
+    container.webkitRequestFullscreen({
+      vrDisplay: cesiumOculus.hmdDevice
+    });
   }
 };
 

@@ -42,9 +42,11 @@ function createTerrainProvider() {
 
 function createScene(canvas) {
   var scene = new Cesium.Scene({canvas : canvas});
+  scene.debugShowFramesPerSecond = true;
+
   var primitives = scene.primitives;
 
-  scene.camera.frustum._fovy = Cesium.Math.toRadians(120.0);
+  // scene.camera.frustum._fovy = Cesium.Math.toRadians(60.0);
 
   var cb = new Cesium.Globe(ellipsoid);
   cb.imageryLayers.addImageryProvider(createImageryProvider());
@@ -95,15 +97,15 @@ var container = document.getElementById('container');
 var fullscreen = function() {
   if (container.requestFullscreen) {
     container.requestFullscreen({
-      vrDisplay: cesiumOculus.hmdDevice
+      vrDisplay: cesiumOculus.getDevice()
     });
   } else if (container.mozRequestFullScreen) {
     container.mozRequestFullScreen({
-      vrDisplay: cesiumOculus.hmdDevice
+      vrDisplay: cesiumOculus.getDevice()
     });
   } else if (container.webkitRequestFullscreen) {
     container.webkitRequestFullscreen({
-      vrDisplay: cesiumOculus.hmdDevice
+      vrDisplay: cesiumOculus.getDevice()
     });
   }
 };
@@ -111,7 +113,7 @@ var fullscreen = function() {
 function run() {
   var scene = createScene(canvasL);
   var camera = scene.camera;
-  var eyeSeparation = 50.0;
+  var eyeSeparation = 10.0;
   var prevCameraRotation;
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
@@ -119,9 +121,12 @@ function run() {
   var forwardVelocity = 0;
   var strafeVelocity = 0;
 
-  var move = function(camera, forwardVelocity, strafeVelocity) {
-    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, forwardVelocity, new Cesium.Cartesian3()), camera.position);
-    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.right, strafeVelocity, new Cesium.Cartesian3()), camera.position);
+  var lastTime = (new Date()).getTime();
+  var currentTime = (new Date()).getTime();
+
+  var move = function(dt, camera, forwardVelocity, strafeVelocity) {
+    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, dt * forwardVelocity, new Cesium.Cartesian3()), camera.position);
+    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.right, dt * strafeVelocity, new Cesium.Cartesian3()), camera.position);
   };
 
   var tick = function() {
@@ -137,19 +142,23 @@ function run() {
 
     // Render right eye
     CesiumOculus.slaveCameraUpdate(modCamera, eyeSeparation * 0.5, camera);
-    cesiumOculus.setSceneParams(scene, 'right');
+    // cesiumOculus.setSceneParams(scene, 'right');
     scene.render();
 
     canvasCopy.copy(canvasL);
 
     // Render left eye
     CesiumOculus.slaveCameraUpdate(modCamera, -eyeSeparation * 0.5, camera);
-    cesiumOculus.setSceneParams(scene, 'left');
+    // cesiumOculus.setSceneParams(scene, 'left');
     scene.render();
 
     // Restore state
-    CesiumOculus.slaveCameraUpdate(originalCamera, 0.0, camera);
-    CesiumOculus.setCameraState(originalCamera, camera);
+    CesiumOculus.slaveCameraUpdate(modCamera, 0.0, camera);
+
+    // Update the camera position based on the current velocity.
+    currentTime = (new Date()).getTime();
+    move((currentTime - lastTime) / 1000.0, camera, forwardVelocity, strafeVelocity);
+    lastTime = currentTime;
 
     Cesium.requestAnimationFrame(tick);
   };
@@ -158,9 +167,10 @@ function run() {
 
   // Resize handler
   var onResizeScene = function(canvas, scene) {
+    // TODO: Removed for a decrease in latency/judder
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
-    var supersample = 1.5;
+    var supersample = 1.0;
     var width = canvas.clientWidth * supersample;
     var height = canvas.clientHeight * supersample;
 
@@ -178,26 +188,36 @@ function run() {
     onResizeScene(canvasR, scene);
   };
 
-  var moveForward = function(camera, amount) {
-    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, amount), camera.position);
-  };
-
   var onKeyDown = function(e) {
-    if (e.keyCode === 38) {
-      moveForward(scene.camera, 10.0);
+    if (e.keyCode === 'W'.charCodeAt(0)) {
+      // Move forward
+      forwardVelocity = 200;
       e.preventDefault();
     }
-    if (e.keyCode === 40) {
-      moveForward(scene.camera, -10.0);
+    if (e.keyCode === 'S'.charCodeAt(0)) {
+      // Move backwards
+      forwardVelocity = -200;
       e.preventDefault();
     }
-    if (e.keyCode === 73) {
+    if (e.keyCode === 'D'.charCodeAt(0)) {
+      // Move right
+      strafeVelocity = 100;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'A'.charCodeAt(0)) {
+      // Move left
+      strafeVelocity = -100;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'I'.charCodeAt(0)) {
+      // Get camera parameters
       alert(JSON.stringify(getCameraParams(scene.camera)));
     }
-    if (e.keyCode === 76) {
+    if (e.keyCode === 'L'.charCodeAt(0)) {
+      // Level the camera to the horizon
       cesiumOculus.levelCamera(scene.camera);
     }
-    if (e.keyCode === 13) {
+    if (e.keyCode === 13) { // Enter
       fullscreen();
     }
     if (typeof locations[e.keyCode] !== 'undefined') {
@@ -205,7 +225,19 @@ function run() {
     }
   };
 
+  var onKeyUp = function(e) {
+    if (e.keyCode === 87 || e.keyCode === 83) {
+      forwardVelocity = 0;
+      e.preventDefault();
+    }
+    if (e.keyCode === 65 || e.keyCode === 68) {
+      strafeVelocity = 0;
+      e.preventDefault();
+    }
+  };
+
   window.addEventListener('resize', onResize, false);
   window.addEventListener('keydown', onKeyDown, false);
+  window.addEventListener('keyup', onKeyUp, false);
   window.setTimeout(onResize, 60);
 }

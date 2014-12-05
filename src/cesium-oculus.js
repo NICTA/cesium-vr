@@ -16,6 +16,8 @@ var CesiumOculus = (function() {
     this.firstTime = true;
     this.refMtx = new Cesium.Matrix3();
 
+    this.IPDScale = 1.0;
+
     var that = this;
 
     this.devices = undefined;
@@ -52,8 +54,8 @@ var CesiumOculus = (function() {
       }
 
       that.frustumOffset = {
-        "left" : -that.hmdDevice.getEyeTranslation("left").x,
-        "right" : -that.hmdDevice.getEyeTranslation("right").x
+        "left" : that.hmdDevice.getEyeTranslation("left").x,
+        "right" : that.hmdDevice.getEyeTranslation("right").x
       };
 
       if (typeof callback !== 'undefined') {
@@ -105,12 +107,20 @@ var CesiumOculus = (function() {
     var target = Cesium.Cartesian3.clone(master.direction);
     var up = Cesium.Cartesian3.clone(master.up);
 
-    Cesium.Cartesian3.cross(master.direction, master.up, right);
+    Cesium.Cartesian3.cross(target, up, right);
+    
+    // Get the focal point
+    Cesium.Cartesian3.multiplyByScalar(target, 10000, target);
+    // Cesium.Cartesian3.add(eye, target, target);
 
+    // Move the camera horizontally with eyeOffset magnitude
     Cesium.Cartesian3.multiplyByScalar(right, eyeOffset, right);
     Cesium.Cartesian3.add(eye, right, eye);
 
-    Cesium.Cartesian3.multiplyByScalar(target, 10000, target);
+    // Set the focal point as target, using converged.
+    // Cesium.Cartesian3.subtract(temp, eye, target);
+
+    // Using parallel line of sight (i.e. not converged)
     Cesium.Cartesian3.add(target, eye, target);
 
     slave.lookAt(eye, target, up);
@@ -161,6 +171,10 @@ var CesiumOculus = (function() {
     Cesium.Matrix3.multiply(oculusRotationMatrix, this.refMtx, prevCameraMatrix);
     CesiumOculus.setCameraRotationMatrix(prevCameraMatrix, camera);
     this.firstTime = false;
+  };
+
+  CesiumOculus.prototype.getDevice = function() {
+    return this.hmdDevice;
   };
 
   return CesiumOculus;

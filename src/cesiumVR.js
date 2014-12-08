@@ -1,11 +1,13 @@
-var CesiumOculus = (function() {
+var CesiumVR = (function() {
   "use strict";
 
   function defaultErrorHandler(msg) {
     alert(msg);
   }
 
-  var CesiumOculus = function(callback, errorHandler) {
+  var CesiumVR = function(callback, errorHandler) {
+    this.ready = false;
+
     this.errorHandler = typeof errorHandler === 'undefined' ? defaultErrorHandler : errorHandler;
     this.state = undefined;
     this.hmdInfo = undefined;
@@ -16,9 +18,9 @@ var CesiumOculus = (function() {
     this.firstTime = true;
     this.refMtx = new Cesium.Matrix3();
 
-    this.IPDScale = 1.0;
-
     var that = this;
+
+    this.IPDScale = 1.0;
 
     this.devices = undefined;
 
@@ -61,6 +63,8 @@ var CesiumOculus = (function() {
       if (typeof callback !== 'undefined') {
         callback();
       }
+
+      that.ready = true;
     }
 
     // Slight discrepancy in the api for WebVR currently.
@@ -71,25 +75,14 @@ var CesiumOculus = (function() {
     }
   };
 
-  CesiumOculus.prototype.setSceneParams = function(scene, eye) {
-    switch (eye) {
-    case "left":
-    case "right":
-      scene.camera.frustum.setOffset(this.frustumOffset[eye], 0.0);
-      break;
-    default:
-      this.errorHandler("developer error, incorrect eye");
-    }
-  };
-
-  CesiumOculus.prototype.toQuat = function(r) {
+  CesiumVR.prototype.toQuat = function(r) {
     if (r.x === 0 && r.y === 0 && r.z === 0 && r.w === 0) {
       return Cesium.Quaternion.IDENTITY;
     }
     return new Cesium.Quaternion(r.x, r.y, r.z, r.w);
   };
 
-  CesiumOculus.prototype.getRotation = function() {
+  CesiumVR.prototype.getRotation = function() {
     var state = this.sensorDevice.getState();
 
     if (state.orientation !== null) {
@@ -100,7 +93,7 @@ var CesiumOculus = (function() {
     }
   };
 
-  CesiumOculus.slaveCameraUpdate = function(master, eyeOffset, slave) {
+  CesiumVR.slaveCameraUpdate = function(master, eyeOffset, slave) {
     var right = new Cesium.Cartesian3();
 
     var eye = Cesium.Cartesian3.clone(master.position);
@@ -109,16 +102,12 @@ var CesiumOculus = (function() {
 
     Cesium.Cartesian3.cross(target, up, right);
     
-    // Get the focal point
+    // Get the camera target point
     Cesium.Cartesian3.multiplyByScalar(target, 10000, target);
-    // Cesium.Cartesian3.add(eye, target, target);
 
     // Move the camera horizontally with eyeOffset magnitude
     Cesium.Cartesian3.multiplyByScalar(right, eyeOffset, right);
     Cesium.Cartesian3.add(eye, right, eye);
-
-    // Set the focal point as target, using converged.
-    // Cesium.Cartesian3.subtract(temp, eye, target);
 
     // Using parallel line of sight (i.e. not converged)
     Cesium.Cartesian3.add(target, eye, target);
@@ -126,13 +115,13 @@ var CesiumOculus = (function() {
     slave.lookAt(eye, target, up);
   };
 
-  CesiumOculus.setCameraRotationMatrix = function(rotation, camera) {
+  CesiumVR.setCameraRotationMatrix = function(rotation, camera) {
     Cesium.Matrix3.getRow(rotation, 0, camera.right);
     Cesium.Matrix3.getRow(rotation, 1, camera.up);
     Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2, camera.direction), camera.direction);
   };
 
-  CesiumOculus.getCameraRotationMatrix = function(camera) {
+  CesiumVR.getCameraRotationMatrix = function(camera) {
     var result = new Cesium.Matrix3();
     Cesium.Matrix3.setRow(result, 0, camera.right, result);
     Cesium.Matrix3.setRow(result, 1, camera.up, result);
@@ -141,7 +130,7 @@ var CesiumOculus = (function() {
   };
 
   // Not here!
-  CesiumOculus.setCameraState = function(src, camera){
+  CesiumVR.setCameraState = function(src, camera){
     camera.position = Cesium.Cartesian3.clone(src.position);
     camera.direction = Cesium.Cartesian3.clone(src.direction);
     camera.up = Cesium.Cartesian3.clone(src.up);
@@ -150,17 +139,17 @@ var CesiumOculus = (function() {
     camera.frustum = src.frustum.clone();
   };
 
-  CesiumOculus.prototype.levelCamera = function(camera) {
+  CesiumVR.prototype.levelCamera = function(camera) {
     this.firstTime = true;
     Cesium.Cartesian3.normalize(camera.position, camera.up);
     Cesium.Cartesian3.cross(camera.direction, camera.up, camera.right);
   };
 
-  CesiumOculus.prototype.applyOculusRotation = function(camera, prevCameraMatrix, rotation) {
-    var oculusRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Matrix3()));
-    var sceneCameraMatrix = CesiumOculus.getCameraRotationMatrix(camera);
+  CesiumVR.prototype.applyVRRotation = function(camera, prevCameraMatrix, rotation) {
+    var VRRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Matrix3()));
+    var sceneCameraMatrix = CesiumVR.getCameraRotationMatrix(camera);
     if (this.firstTime) {
-      Cesium.Matrix3.inverse(oculusRotationMatrix, this.refMtx);
+      Cesium.Matrix3.inverse(VRRotationMatrix, this.refMtx);
       Cesium.Matrix3.multiply(this.refMtx, sceneCameraMatrix, this.refMtx);
     } else {
       var temp = new Cesium.Matrix3();
@@ -168,15 +157,15 @@ var CesiumOculus = (function() {
       Cesium.Matrix3.multiply(temp, sceneCameraMatrix, temp);
       Cesium.Matrix3.multiply(this.refMtx, temp, this.refMtx);
     }
-    Cesium.Matrix3.multiply(oculusRotationMatrix, this.refMtx, prevCameraMatrix);
-    CesiumOculus.setCameraRotationMatrix(prevCameraMatrix, camera);
+    Cesium.Matrix3.multiply(VRRotationMatrix, this.refMtx, prevCameraMatrix);
+    CesiumVR.setCameraRotationMatrix(prevCameraMatrix, camera);
     this.firstTime = false;
   };
 
-  CesiumOculus.prototype.getDevice = function() {
+  CesiumVR.prototype.getDevice = function() {
     return this.hmdDevice;
   };
 
-  return CesiumOculus;
+  return CesiumVR;
 
 }());

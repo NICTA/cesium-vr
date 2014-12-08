@@ -139,19 +139,17 @@ function run() {
     var modCamera = camera.clone();
 
     // Render right eye
-    CesiumVR.slaveCameraUpdate(modCamera, eyeSeparation * 0.5, camera);
-    // cesiumVR.setSceneParams(scene, 'right');
+    cesiumVR.slaveCameraUpdate(modCamera, camera, 'right');
     scene.render();
 
     canvasCopy.copy(canvasL);
 
     // Render left eye
-    CesiumVR.slaveCameraUpdate(modCamera, -eyeSeparation * 0.5, camera);
-    // cesiumVR.setSceneParams(scene, 'left');
+    cesiumVR.slaveCameraUpdate(modCamera, camera, 'left');
     scene.render();
 
     // Restore state
-    CesiumVR.slaveCameraUpdate(modCamera, 0.0, camera);
+    cesiumVR.slaveCameraUpdate(modCamera, camera);
 
     // Update the camera position based on the current velocity.
     currentTime = (new Date()).getTime();
@@ -182,10 +180,6 @@ function run() {
     var apsectRatio = width / height;
 
     scene.camera.frustum.aspectRatio = apsectRatio;
-
-    var fov = cesiumVR.getDevice().getRecommendedEyeFieldOfView('right');
-
-    scene.camera.frustum.fov = Cesium.Math.toRadians(fov.leftDegrees + fov.rightDegrees);
   };
 
   var onResize = function() {
@@ -214,10 +208,10 @@ function run() {
       strafeVelocity = -100;
       e.preventDefault();
     }
-    if (e.keyCode === 'I'.charCodeAt(0)) {
-      // Get camera parameters
-      alert(JSON.stringify(getCameraParams(scene.camera)));
-    }
+    // if (e.keyCode === 'I'.charCodeAt(0)) {
+    //   // Get camera parameters
+    //   alert(JSON.stringify(getCameraParams(scene.camera)));
+    // }
     if (e.keyCode === 'L'.charCodeAt(0)) {
       // Level the camera to the horizon
       cesiumVR.levelCamera(scene.camera);

@@ -18,17 +18,12 @@ var CesiumVR = (function() {
     this.firstTime = true;
     this.refMtx = new Cesium.Matrix3();
 
+    this.IPDScale = 1.0; // TODO: Pass in as parameter...?
+
     var that = this;
-
-    this.IPDScale = 1.0;
-
-    this.devices = undefined;
 
     function EnumerateVRDevices(devices) {
       // First find an HMD device
-      console.log(devices);
-      that.devices = devices;
-
       for (var i = 0; i < devices.length; ++i) {
         if (devices[i] instanceof HMDVRDevice) {
           that.hmdDevice = devices[i];
@@ -55,16 +50,100 @@ var CesiumVR = (function() {
         defaultErrorHandler("No HMD sensor detected");
       }
 
-      that.frustumOffset = {
-        "left" : that.hmdDevice.getEyeTranslation("left").x,
-        "right" : that.hmdDevice.getEyeTranslation("right").x
+      // Holds information about the x-axis eye separation in the world.
+      that.xEyeTranslation = {
+        'left'  : -that.hmdDevice.getEyeTranslation('left').x * that.IPDScale,
+        'right' : -that.hmdDevice.getEyeTranslation('right').x * that.IPDScale
       };
+
+      var recommendedFovs = {
+        'left'  : that.hmdDevice.getRecommendedEyeFieldOfView('left'),
+        'right' : that.hmdDevice.getRecommendedEyeFieldOfView('right')
+      };
+
+      var getFovs = function(fov) {
+        return {
+          x : fov.leftDegrees + fov.rightDegrees,
+          y : fov.upDegrees + fov.downDegrees
+        };
+      };
+
+      that.fovs = {
+        'left'  : getFovs(recommendedFovs['left']),
+        'right' : getFovs(recommendedFovs['right']),
+      };
+
+      console.log(recommendedFovs);
+
+      var toRad =  Math.PI / 180.0;
+
+      // Gets the 4 viewport distances for the given fov
+      var getViewportDists = function(fov) {
+        return {
+          leftDist : Math.tan(fov.leftDegrees * toRad),
+          rightDist : Math.tan(fov.rightDegrees * toRad),
+          upDist   : Math.tan(fov.upDegrees * toRad),
+          downDist : Math.tan(fov.downDegrees * toRad)
+        };
+      };
+
+      var viewportDists = {
+        'left'  : getViewportDists(recommendedFovs['left']),
+        'right' : getViewportDists(recommendedFovs['right'])
+      };
+
+      // Gets the viewport distances assuming a symmetrical fov.
+      var getViewportOriginalDists = function(fov) {
+        return {
+          xDist : 2 * Math.tan((fov.x / 2.0) * toRad),
+          yDist : 2 * Math.tan((fov.y / 2.0) * toRad)
+        };
+      };
+
+      var viewportOrigDists = {
+        'left'  : getViewportOriginalDists(that.fovs['left']),
+        'right' : getViewportOriginalDists(that.fovs['right'])
+      }
+
+      // Gets the scaling factor for asymmetrical fov.
+      var vpDistToScale = function(vpDists, vpOrigDists) {
+        console.log(vpDists.leftDist + vpDists.rightDist);
+        console.log(vpOrigDists.xDist);
+
+        var xScale = (vpDists.leftDist + vpDists.rightDist) / vpOrigDists.xDist;
+        var yScale = (vpDists.upDist + vpDists.downDist) / vpOrigDists.yDist;
+
+        return { x : xScale, y : yScale };
+      };
+
+      that.fovScales = {
+        'left'  : vpDistToScale(viewportDists['left'], viewportOrigDists['left']),
+        'right' : vpDistToScale(viewportDists['right'], viewportOrigDists['right'])
+      };
+
+      // Gets the amount of offset for asymmetrical fov.
+      var vpDistToOffset = function(vpDists) {
+        var dx = (vpDists.rightDist - vpDists.leftDist) * 0.5;
+        var dy = (vpDists.upDist - vpDists.downDist) * 0.5;
+        return { x : dx, y : dy };
+      };
+
+      that.fovOffsets = {
+        'left'  : vpDistToOffset(viewportDists['left']),
+        'right' : vpDistToOffset(viewportDists['right'])
+      };
+
+      that.ready = true;
+
+      console.log(that.xEyeTranslation);
+      console.log(that.fovOffsets);
+      console.log(that.fovScales);
+      console.log(that.fovs);
+
 
       if (typeof callback !== 'undefined') {
         callback();
       }
-
-      that.ready = true;
     }
 
     // Slight discrepancy in the api for WebVR currently.
@@ -93,26 +172,51 @@ var CesiumVR = (function() {
     }
   };
 
-  CesiumVR.slaveCameraUpdate = function(master, eyeOffset, slave) {
-    var right = new Cesium.Cartesian3();
+  CesiumVR.prototype.slaveCameraUpdate = function(master, slave, eye) {
+    // TODO: Check for valid input?
+    switch (eye) {
+    case 'left':
+    case 'right':
+      var eyeOffset = this.xEyeTranslation[eye];
 
-    var eye = Cesium.Cartesian3.clone(master.position);
-    var target = Cesium.Cartesian3.clone(master.direction);
-    var up = Cesium.Cartesian3.clone(master.up);
+      // Set slave position and orientation
+      var right = new Cesium.Cartesian3();
+      var position = Cesium.Cartesian3.clone(master.position);
+      var target   = Cesium.Cartesian3.clone(master.direction);
+      var up       = Cesium.Cartesian3.clone(master.up);
 
-    Cesium.Cartesian3.cross(target, up, right);
-    
-    // Get the camera target point
-    Cesium.Cartesian3.multiplyByScalar(target, 10000, target);
+      Cesium.Cartesian3.cross(target, up, right);
+      
+      // Get the camera target point
+      Cesium.Cartesian3.multiplyByScalar(target, 10000, target); // Is this necessary?
 
-    // Move the camera horizontally with eyeOffset magnitude
-    Cesium.Cartesian3.multiplyByScalar(right, eyeOffset, right);
-    Cesium.Cartesian3.add(eye, right, eye);
+      // Move the camera horizontally with eyeOffset magnitude
+      Cesium.Cartesian3.multiplyByScalar(right, eyeOffset, right);
+      Cesium.Cartesian3.add(position, right, position);
 
-    // Using parallel line of sight (i.e. not converged)
-    Cesium.Cartesian3.add(target, eye, target);
+      // Using parallel line of sight (i.e. not converged)
+      Cesium.Cartesian3.add(target, position, target);
 
-    slave.lookAt(eye, target, up);
+      // Set target 
+      slave.lookAt(position, target, up);
+
+
+      var fov = this.fovs[eye];
+
+      // Set slave fov and scale
+      slave.frustum.fov = fov.x * this.fovScales[eye].x;
+
+      // Set the fov offset
+      slave.frustum.setOffset(this.fovOffsets[eye].x, 0.0);
+
+
+      console.log(master.frustum);
+      break;
+    default:
+      // Reset slave === master
+      slave.lookAt(master.position, master.direction, master.up);
+    }
+
   };
 
   CesiumVR.setCameraRotationMatrix = function(rotation, camera) {

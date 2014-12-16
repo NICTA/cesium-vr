@@ -88,41 +88,27 @@ var setCameraParams = function(_, camera) {
   camera.direction = _.direction;
 };
 
-var cesiumVR = new CesiumVR(run);
+var cesiumVR = new CesiumVR(10.0, run);
 
 var container = document.getElementById('container');
-
-var fullscreen = function() {
-  if (container.requestFullscreen) {
-    container.requestFullscreen({
-      vrDisplay: cesiumVR.getDevice()
-    });
-  } else if (container.mozRequestFullScreen) {
-    container.mozRequestFullScreen({
-      vrDisplay: cesiumVR.getDevice()
-    });
-  } else if (container.webkitRequestFullscreen) {
-    container.webkitRequestFullscreen({
-      vrDisplay: cesiumVR.getDevice()
-    });
-  }
-};
 
 function run() {
   var scene = createScene(canvasL);
   var camera = scene.camera;
-  var eyeSeparation = Math.abs(2 * cesiumVR.getDevice().getEyeTranslation('right').x) * cesiumVR.IPDScale;
+
   var prevCameraRotation;
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 
   var forwardVelocity = 0;
   var strafeVelocity = 0;
+  var multiplier = 1.0;
 
   var lastTime = (new Date()).getTime();
   var currentTime = (new Date()).getTime();
 
-  var move = function(dt, camera, forwardVelocity, strafeVelocity) {
+  // update the camera position based on the dt (in secs) and the 2 velocities.
+  var move = function(camera, dt, forwardVelocity, strafeVelocity) {
     Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, dt * forwardVelocity, new Cesium.Cartesian3()), camera.position);
     Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.right, dt * strafeVelocity, new Cesium.Cartesian3()), camera.position);
   };
@@ -131,29 +117,26 @@ function run() {
     // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
     scene.initializeFrame();
 
-    // Store camera state
-    var originalCamera = camera.clone();
-
     // Take into account user head rotation
     cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
-    var modCamera = camera.clone();
+    var masterCam = camera.clone();
 
     // Render right eye
-    cesiumVR.slaveCameraUpdate(modCamera, camera, 'right');
+    cesiumVR.slaveCameraUpdate(masterCam, camera, 'right');
     scene.render();
 
     canvasCopy.copy(canvasL);
 
     // Render left eye
-    cesiumVR.slaveCameraUpdate(modCamera, camera, 'left');
+    cesiumVR.slaveCameraUpdate(masterCam, camera, 'left');
     scene.render();
 
-    // Restore state
-    cesiumVR.slaveCameraUpdate(modCamera, camera);
+    // Restore camera state
+    cesiumVR.slaveCameraUpdate(masterCam, camera);
 
     // Update the camera position based on the current velocity.
     currentTime = (new Date()).getTime();
-    move((currentTime - lastTime) / 1000.0, camera, forwardVelocity, strafeVelocity);
+    move(camera, (currentTime - lastTime) / 1000.0, multiplier * forwardVelocity, multiplier * strafeVelocity);
     lastTime = currentTime;
 
     Cesium.requestAnimationFrame(tick);
@@ -163,10 +146,10 @@ function run() {
 
   // Resize handler
   var onResizeScene = function(canvas, scene) {
-    // TODO: Removed for a decrease in latency/judder
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
-    var supersample = 1.0;
+    var supersample = 1.0; // Could increase this to >1 to increase VR resolution
+
     var width = canvas.clientWidth * supersample;
     var height = canvas.clientHeight * supersample;
 
@@ -176,10 +159,6 @@ function run() {
 
     canvas.width = width;
     canvas.height = height;
-
-    var apsectRatio = width / height;
-
-    scene.camera.frustum.aspectRatio = apsectRatio;
   };
 
   var onResize = function() {
@@ -187,37 +166,37 @@ function run() {
     onResizeScene(canvasR, scene);
   };
 
+  // Basic WASD keys implemented w/ shift for speed up.
   var onKeyDown = function(e) {
     if (e.keyCode === 'W'.charCodeAt(0)) {
       // Move forward
-      forwardVelocity = 200;
+      forwardVelocity = 250;
       e.preventDefault();
     }
     if (e.keyCode === 'S'.charCodeAt(0)) {
       // Move backwards
-      forwardVelocity = -200;
+      forwardVelocity = -250;
       e.preventDefault();
     }
     if (e.keyCode === 'D'.charCodeAt(0)) {
       // Move right
-      strafeVelocity = 100;
+      strafeVelocity = 150;
       e.preventDefault();
     }
     if (e.keyCode === 'A'.charCodeAt(0)) {
       // Move left
-      strafeVelocity = -100;
+      strafeVelocity = -150;
       e.preventDefault();
     }
-    // if (e.keyCode === 'I'.charCodeAt(0)) {
-    //   // Get camera parameters
-    //   alert(JSON.stringify(getCameraParams(scene.camera)));
-    // }
     if (e.keyCode === 'L'.charCodeAt(0)) {
       // Level the camera to the horizon
       cesiumVR.levelCamera(scene.camera);
     }
+    if (e.keyCode === 16) { // Shift
+      multiplier = 2.0;
+    }
     if (e.keyCode === 13) { // Enter
-      fullscreen();
+      cesiumVR.goFullscreenVR(container);
     }
     if (typeof locations[e.keyCode] !== 'undefined') {
       setCameraParams(locations[e.keyCode], scene.camera);
@@ -225,14 +204,18 @@ function run() {
   };
 
   var onKeyUp = function(e) {
-    if (e.keyCode === 87 || e.keyCode === 83) {
+    if (e.keyCode === 'W'.charCodeAt(0) || e.keyCode === 'S'.charCodeAt(0)) {
       forwardVelocity = 0;
       e.preventDefault();
     }
-    if (e.keyCode === 65 || e.keyCode === 68) {
+    if (e.keyCode === 'D'.charCodeAt(0) || e.keyCode === 'A'.charCodeAt(0)) {
       strafeVelocity = 0;
       e.preventDefault();
     }
+    if (e.keyCode === 16) { // Shift
+      multiplier = 1.0;
+    }
+
   };
 
   window.addEventListener('resize', onResize, false);

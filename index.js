@@ -1,5 +1,7 @@
 "use strict";
 
+var FPS_ON = false;
+
 var lofi = false;
 var postprocess = true;
 
@@ -88,7 +90,7 @@ var setCameraParams = function(_, camera) {
   camera.direction = _.direction;
 };
 
-var cesiumVR = new CesiumVR(10.0, run);
+var cesiumVR = new CesiumVR(100.0, run);
 
 var container = document.getElementById('container');
 
@@ -113,6 +115,9 @@ function run() {
     Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.right, dt * strafeVelocity, new Cesium.Cartesian3()), camera.position);
   };
 
+  var count = 0;
+  var fps = 0;
+
   var tick = function() {
     // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
     scene.initializeFrame();
@@ -122,20 +127,29 @@ function run() {
     var masterCam = camera.clone();
 
     // Render right eye
-    cesiumVR.slaveCameraUpdate(masterCam, camera, 'right');
+    cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
     scene.render();
 
     canvasCopy.copy(canvasL);
 
     // Render left eye
-    cesiumVR.slaveCameraUpdate(masterCam, camera, 'left');
+    cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
     scene.render();
 
     // Restore camera state
-    cesiumVR.slaveCameraUpdate(masterCam, camera);
+    cesiumVR.configureSlaveCamera(masterCam, camera);
 
     // Update the camera position based on the current velocity.
     currentTime = (new Date()).getTime();
+
+    if (FPS_ON) {
+      if(++count % 100 === 0){
+        console.log(fps / 100.0);
+        fps = 0;
+      }
+      fps += (1.0 / ((currentTime - lastTime) / 1000.0));      
+    }
+
     move(camera, (currentTime - lastTime) / 1000.0, multiplier * forwardVelocity, multiplier * strafeVelocity);
     lastTime = currentTime;
 
@@ -199,6 +213,7 @@ function run() {
       cesiumVR.goFullscreenVR(container);
     }
     if (typeof locations[e.keyCode] !== 'undefined') {
+      // Go to a location and level the camera...
       setCameraParams(locations[e.keyCode], scene.camera);
     }
   };

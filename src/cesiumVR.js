@@ -5,9 +5,20 @@ var CesiumVR = (function() {
     alert(msg);
   }
 
+  /**
+   * The main VR handler for Cesium.
+   *
+   * Provide a value to scale the camera distance for the eyes. This
+   * increases/decreases the sense of scale in Cesium.
+   * 
+   * Use 1.0 for a realistic sense of scale and larger values (~100.0-1000.0) for
+   * a model/diorama feel.
+   * 
+   * @param {Number}   scale        A scalar for the Interpupillary Distance.
+   * @param {Function} callback     [description]
+   * @param {[type]}   errorHandler [description]
+   */
   var CesiumVR = function(scale, callback, errorHandler) {
-    this.ready = false;
-
     this.errorHandler = typeof errorHandler === 'undefined' ? defaultErrorHandler : errorHandler;
 
     this.hmdDevice = undefined;
@@ -16,7 +27,7 @@ var CesiumVR = (function() {
     this.firstTime = true;
     this.refMtx = new Cesium.Matrix3();
 
-    this.IPDScale = scale > 0.0 ? scale : 1.0; // TODO: Pass in as parameter...?
+    this.IPDScale = scale > 0.0 ? scale : 1.0;
 
     var that = this;
 
@@ -52,8 +63,8 @@ var CesiumVR = (function() {
 
       // Holds information about the x-axis eye separation in the world.
       that.xEyeTranslation = {
-        'left'  : that.hmdDevice.getEyeTranslation('left').x * that.IPDScale,
-        'right' : that.hmdDevice.getEyeTranslation('right').x * that.IPDScale
+        'left'  : that.hmdDevice.getEyeTranslation('left').x,
+        'right' : that.hmdDevice.getEyeTranslation('right').x
       };
 
       // Holds information about the recommended FOV for each eye for the detected device.
@@ -123,20 +134,52 @@ var CesiumVR = (function() {
     return new Cesium.Quaternion(r.x, r.y, r.z, r.w);
   };
 
+  /**
+   * Returns the orientation of the HMD as a quaternion.
+
+   * @return {Cesium.Quaternion}
+   */
   CesiumVR.prototype.getRotation = function() {
     return toQuat(this.sensorDevice.getState().orientation);
   };
 
+  /**
+   * Returns the position of the HMD as a quaternion.
+   *
+   * NOTE: Currently not used.
+   * 
+   * @return {Cesium.Quaternion}
+   */
   CesiumVR.prototype.getPosition = function() {
     return toQuat(this.sensorDevice.getState().position);
   };
 
-  CesiumVR.prototype.slaveCameraUpdate = function(master, slave, eye) {
+  /**
+   * Given a master camera, slave camera and eye option, this will configure
+   * the slave camera with reference to the master camera for the given eye.
+   *
+   * It will ensure all the appropriate FOV and aspect ratio settings are
+   * applied depending on the current VR equipment discovered.
+   *
+   * If the eye parameter is not either 'right' or 'left', it will simply clone
+   * the master camera into the slave camera.
+   * 
+   * @param  {[type]} master [description]
+   * @param  {[type]} slave  [description]
+   * @param  {[type]} eye    [description]
+   * @return {[type]}        [description]
+   */
+  CesiumVR.prototype.configureSlaveCamera = function(master, slave, eye) {
     var translation = 0.0;
+
+    // Start with a master copy
+    slave.frustum.fov = master.frustum.fov;
+    slave.frustum.aspectRatio = master.frustum.aspectRatio;
+    slave.frustum.setOffset(0.0, 0.0);
 
     if (eye === 'right' || eye === 'left') {
       // Get the correct eye translation.
-      translation = this.xEyeTranslation[eye];
+      translation = this.xEyeTranslation[eye] * this.IPDScale;
 
       // Update the frustum offset, aspect ratio and fov for the eye.
       slave.frustum.setOffset(this.fovScaleAndOffset[eye].offset.x, 0.0); // Assumes only x offset is required.
@@ -150,6 +193,7 @@ var CesiumVR = (function() {
       }
     }
 
+    // Set the position and orientation using the master camera.
     var pos = Cesium.Cartesian3.clone(master.position);
     var target = Cesium.Cartesian3.clone(master.direction);
     var up = Cesium.Cartesian3.clone(master.up);
@@ -157,6 +201,7 @@ var CesiumVR = (function() {
     var right = new Cesium.Cartesian3();
     Cesium.Cartesian3.cross(master.direction, master.up, right);
 
+    // translate camera for given eye
     Cesium.Cartesian3.multiplyByScalar(right, translation, right);
     Cesium.Cartesian3.add(pos, right, pos);
 
@@ -181,12 +226,13 @@ var CesiumVR = (function() {
     return result;
   };
 
-  CesiumVR.prototype.levelCamera = function(camera) {
-    this.firstTime = true;
-    Cesium.Cartesian3.normalize(camera.position, camera.up);
-    Cesium.Cartesian3.cross(camera.direction, camera.up, camera.right);
-  };
-
+  /**
+   * [applyVRRotation description]
+   * @param  {[type]} camera           [description]
+   * @param  {[type]} prevCameraMatrix [description]
+   * @param  {[type]} rotation         [description]
+   * @return {[type]}                  [description]
+   */
   CesiumVR.prototype.applyVRRotation = function(camera, prevCameraMatrix, rotation) {
     var VRRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Matrix3()));
     var sceneCameraMatrix = CesiumVR.getCameraRotationMatrix(camera);
@@ -204,6 +250,32 @@ var CesiumVR = (function() {
     this.firstTime = false;
   };
 
+  /**
+   * Orient the camera with the up vector away from the center of the globe,
+   * i.e. set the up vector to the same direction as the position vector.
+   * 
+   * @param  {Cesium.Camera} camera   The camera to normalise.
+   */
+  CesiumVR.prototype.levelCamera = function(camera) {
+    this.firstTime = true;
+    Cesium.Cartesian3.normalize(camera.position, camera.up);
+    Cesium.Cartesian3.cross(camera.direction, camera.up, camera.right);
+    Cesium.Cartesian3.cross(camera.up, camera.right, camera.direction);
+  };
+
+  /**
+   * Reset the HMD sensor.
+   */
+  CesiumVR.prototype.zeroSensor = function() {
+    this.sensorDevice.zeroSensor();
+  };
+
+  /**
+   * Given a container HTML element (e.g. div or canvas), this will go
+   * fullscreen into VR mode.
+   * 
+   * @param  {HTML element} container
+   */
   CesiumVR.prototype.goFullscreenVR = function(container) {
     if (container.requestFullscreen) {
       container.requestFullscreen({
@@ -218,7 +290,7 @@ var CesiumVR = (function() {
         vrDisplay: this.hmdDevice
       });
     }
-  }
+  };
 
   return CesiumVR;
 

@@ -21,16 +21,21 @@ var CesiumVR = (function() {
   var CesiumVR = function(scale, callback, errorHandler) {
     this.errorHandler = typeof errorHandler === 'undefined' ? defaultErrorHandler : errorHandler;
 
+    // Holds the vr device and sensor
     this.hmdDevice = undefined;
     this.sensorDevice = undefined;
 
     this.firstTime = true;
     this.refMtx = new Cesium.Matrix3();
 
+    // The Interpupillary Distance scalar
     this.IPDScale = scale > 0.0 ? scale : 1.0;
 
     var that = this;
 
+    /**
+     * Configures CesiumVR for the attached VR devices.
+     */
     function EnumerateVRDevices(devices) {
       // First find an HMD device
       for (var i = 0; i < devices.length; ++i) {
@@ -43,6 +48,7 @@ var CesiumVR = (function() {
       if (!that.hmdDevice) {
         // No HMD detected.
         defaultErrorHandler("No HMD detected");
+        return;
       }
 
       // Next find a sensor that matches the HMD hardwareUnitId
@@ -57,73 +63,78 @@ var CesiumVR = (function() {
       if (!that.sensorDevice) {
         // No HMD sensor detected.
         defaultErrorHandler("No HMD sensor detected");
+        return;
       }
 
       // We now have our devices... let's calculate all the required setup information...
+      if (that.hmdDevice) {
+        // Holds information about the x-axis eye separation in the world.
+        that.xEyeTranslation = {
+          'left'  : that.hmdDevice.getEyeTranslation('left').x,
+          'right' : that.hmdDevice.getEyeTranslation('right').x
+        };
 
-      // Holds information about the x-axis eye separation in the world.
-      that.xEyeTranslation = {
-        'left'  : that.hmdDevice.getEyeTranslation('left').x,
-        'right' : that.hmdDevice.getEyeTranslation('right').x
-      };
+        // Holds information about the recommended FOV for each eye for the detected device.
+        that.fovs = {
+          'left'  : that.hmdDevice.getRecommendedEyeFieldOfView('left'),
+          'right' : that.hmdDevice.getRecommendedEyeFieldOfView('right')
+        };
 
-      // Holds information about the recommended FOV for each eye for the detected device.
-      that.fovs = {
-        'left'  : that.hmdDevice.getRecommendedEyeFieldOfView('left'),
-        'right' : that.hmdDevice.getRecommendedEyeFieldOfView('right')
-      };
+        // Given a hmd device and a eye, returns the aspect ratio for that eye
+        var getAspectRatio = function(hmdDevice, eye) {
+          var rect = hmdDevice.getRecommendedEyeRenderRect(eye);
+          return rect.width / rect.height;
+        };
+        
+        // Holds the aspect ratio information about each eye
+        that.fovAspectRatio = {
+          'left'  : getAspectRatio(that.hmdDevice, 'left'),
+          'right' : getAspectRatio(that.hmdDevice, 'right')
+        }
 
-      // Given a hmd device and a eye, returns the aspect ratio for that eye
-      var getAspectRatio = function(hmdDevice, eye) {
-        var rect = hmdDevice.getRecommendedEyeRenderRect(eye);
-        return rect.width / rect.height;
-      };
-      
-      // Holds the aspect ratio information about each eye
-      that.fovAspectRatio = {
-        'left'  : getAspectRatio(that.hmdDevice, 'left'),
-        'right' : getAspectRatio(that.hmdDevice, 'right')
+        // Calculates the required scaling and offsetting of a symmetrical fov given an asymmetrical fov.
+        var FovToScaleAndOffset = function(fov) {
+          var fovPort = {
+            upTan: Math.tan(fov.upDegrees * Math.PI / 180.0),
+            downTan: Math.tan(fov.downDegrees * Math.PI / 180.0),
+            leftTan: Math.tan(fov.leftDegrees * Math.PI / 180.0),
+            rightTan: Math.tan(fov.rightDegrees * Math.PI / 180.0)
+          };
+
+          var xOrigSize = 2 * Math.tan((fov.leftDegrees + fov.rightDegrees) * 0.5 * Math.PI / 180.0);
+          var yOrigSize = 2 * Math.tan((fov.upDegrees + fov.downDegrees) * 0.5 * Math.PI / 180.0);
+
+          var pxscale = Math.abs((fovPort.rightTan + fovPort.leftTan) / xOrigSize);
+          var pxoffset = (fovPort.rightTan - fovPort.leftTan) * 0.5 / (fovPort.rightTan + fovPort.leftTan);
+          var pyscale = Math.abs((fovPort.downTan + fovPort.upTan) / yOrigSize);
+          var pyoffset = (fovPort.downTan - fovPort.upTan) * 0.5 / (fovPort.downTan + fovPort.upTan);
+
+          return {
+            scale: { x : pxscale, y : pyscale },
+            offset: { x : pxoffset, y : pyoffset }
+          };
+        };
+
+        // Holds the fov scaling and offset information for each eye.
+        that.fovScaleAndOffset = {
+          'left'  : FovToScaleAndOffset(that.fovs['left']),
+          'right' : FovToScaleAndOffset(that.fovs['right'])
+        };
       }
-
-      // Calculates the required scaling and offsetting of a symmetrical fov given an asymmetrical fov.
-      var FovToScaleAndOffset = function(fov) {
-        var fovPort = {
-          upTan: Math.tan(fov.upDegrees * Math.PI / 180.0),
-          downTan: Math.tan(fov.downDegrees * Math.PI / 180.0),
-          leftTan: Math.tan(fov.leftDegrees * Math.PI / 180.0),
-          rightTan: Math.tan(fov.rightDegrees * Math.PI / 180.0)
-        };
-
-        var xOrigSize = 2 * Math.tan((fov.leftDegrees + fov.rightDegrees) * 0.5 * Math.PI / 180.0);
-        var yOrigSize = 2 * Math.tan((fov.upDegrees + fov.downDegrees) * 0.5 * Math.PI / 180.0);
-
-        var pxscale = Math.abs((fovPort.rightTan + fovPort.leftTan) / xOrigSize);
-        var pxoffset = (fovPort.rightTan - fovPort.leftTan) * 0.5 / (fovPort.rightTan + fovPort.leftTan);
-        var pyscale = Math.abs((fovPort.downTan + fovPort.upTan) / yOrigSize);
-        var pyoffset = (fovPort.downTan - fovPort.upTan) * 0.5 / (fovPort.downTan + fovPort.upTan);
-
-        return {
-          scale: { x : pxscale, y : pyscale },
-          offset: { x : pxoffset, y : pyoffset }
-        };
-      };
-
-      // Holds the fov scaling and offset information for each eye.
-      that.fovScaleAndOffset = {
-        'left'  : FovToScaleAndOffset(that.fovs['left']),
-        'right' : FovToScaleAndOffset(that.fovs['right'])
-      };
 
       if (typeof callback !== 'undefined') {
         callback();
       }
     }
 
-    // Slight discrepancy in the api for WebVR currently.
+    // Slight discrepancy in the api for Firefox/Chrome WebVR currently.
     if (navigator.getVRDevices) {
       navigator.getVRDevices().then(EnumerateVRDevices);
-    } else if (navigator.mozGetVRDevices) { // TODO: Still required?
+    } else if (navigator.mozGetVRDevices) {
       navigator.mozGetVRDevices(EnumerateVRDevices);
+    } else {
+      // No VR API detected...
+      defaultErrorHandler("VR-enabled browser is required for VR mode. Please visit http://mozvr.com/download.html to get Firefox VR.");
     }
   };
 
@@ -164,10 +175,9 @@ var CesiumVR = (function() {
    * If the eye parameter is not either 'right' or 'left', it will simply clone
    * the master camera into the slave camera.
    * 
-   * @param  {[type]} master [description]
-   * @param  {[type]} slave  [description]
-   * @param  {[type]} eye    [description]
-   * @return {[type]}        [description]
+   * @param  {Cesium.Camera} master The reference camera
+   * @param  {Cesium.Camera} slave  The camera to be modified
+   * @param  {String}        eye    The eye specifier
    */
   CesiumVR.prototype.configureSlaveCamera = function(master, slave, eye) {
     var translation = 0.0;
@@ -226,13 +236,6 @@ var CesiumVR = (function() {
     return result;
   };
 
-  /**
-   * [applyVRRotation description]
-   * @param  {[type]} camera           [description]
-   * @param  {[type]} prevCameraMatrix [description]
-   * @param  {[type]} rotation         [description]
-   * @return {[type]}                  [description]
-   */
   CesiumVR.prototype.applyVRRotation = function(camera, prevCameraMatrix, rotation) {
     var VRRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Matrix3()));
     var sceneCameraMatrix = CesiumVR.getCameraRotationMatrix(camera);

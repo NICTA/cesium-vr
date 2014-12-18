@@ -44,7 +44,7 @@ function createTerrainProvider() {
 
 function createScene(canvas) {
   var scene = new Cesium.Scene({canvas : canvas});
-  scene.debugShowFramesPerSecond = true;
+  scene.debugShowFramesPerSecond = FPS_ON;
 
   var primitives = scene.primitives;
 

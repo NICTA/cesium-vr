@@ -19,9 +19,9 @@ A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR dev
 
 * (optional) Plug in your VR headset. The code should still work even if you don't have one.
 * Start up Firefox VR and visit `http://localhost:8080`.
-* Hit Enter to make the browser fullscreen on your VR display.
-* The mouse can be used on the left eye to navigate.  Number keys take you to some pre-set locations. Hit `L` at any time to level the camera to the globes surface.
-* The WASD keys allow horizontal movement with Q and E allowing vertical movement. Holding Shift speeds up all movement.
+* Hit `Enter` to make the browser fullscreen on your VR display.
+* The mouse can be used on the left eye to navigate.  Number keys take you to some pre-set locations. Hit `L` at any time to level the camera to the globe surface.
+* The `WASD` keys allow horizontal movement with `Q` and `E` allowing vertical movement. Holding `Shift` speeds up all movement.
 
 If you are having any problems, visit [mozvr.com](http://mozvr.com) to check you have correctly configured your VR device for use in Firefox VR. If you're still having troubles, feel free to post an issue on the GitHub repository.
 
@@ -40,7 +40,7 @@ For each frame:
 
 ### Frustum offsetting
 We have applied a small modification to Cesium's PerspectiveFrustum class.
-This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas.
+This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas. These modifications can currentl be found in the [`postprocess-hook` branch](https://github.com/AnalyticalGraphicsInc/cesium/tree/postprocess-hook) of Cesium.
 
 ### Testing
 At time of writing we have tested **cesium-vr** in Firefox VR (36.01a) on Windows and OSX with the Oculus Rift Development Kit 1 and 2.

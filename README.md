@@ -40,7 +40,7 @@ For each frame:
 
 ### Frustum offsetting
 We have applied a small modification to Cesium's PerspectiveFrustum class.
-This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas. These modifications can currentl be found in the [`postprocess-hook` branch](https://github.com/AnalyticalGraphicsInc/cesium/tree/postprocess-hook) of Cesium.
+This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas. These modifications can currently be found in the [`postprocess-hook`](https://github.com/AnalyticalGraphicsInc/cesium/tree/postprocess-hook) branch of Cesium.
 
 ### Testing
 At time of writing we have tested **cesium-vr** in Firefox VR (36.01a) on Windows and OSX with the Oculus Rift Development Kit 1 and 2.

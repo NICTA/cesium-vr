@@ -124,8 +124,8 @@ function run() {
 
   var multiplier = 1.0;
 
-  var lastTime = (new Date()).getTime();
-  var currentTime = (new Date()).getTime();
+  var lastTime = new Date().getTime();
+  var currentTime = new Date().getTime();
 
   // Using our own FPS counter due to double rendering.
   var fps = new FPS();
@@ -152,6 +152,7 @@ function run() {
     cesiumVR.configureSlaveCamera(masterCam, camera);
 
     // Move camera based on current velocities.
+    currentTime = new Date().getTime();
     move(camera, (currentTime - lastTime) / 1000.0, velocities, multiplier);
     lastTime = currentTime;
 
@@ -222,17 +223,19 @@ function run() {
       cesiumVR.levelCamera(scene.camera);
     }
     if (e.keyCode === 'K'.charCodeAt(0)) {
-      // Level the camera to the horizon
+      // Show the help text
       showHelpScreen();
     }
     if (e.keyCode === 16) { // Shift
+      // Speed up user movement
       multiplier = 2.0;
     }
     if (e.keyCode === 13) { // Enter
+      // Go fullscreen into VR Mode...
       cesiumVR.goFullscreenVR(container);
     }
     if (typeof locations[e.keyCode] !== 'undefined') {
-      // Go to a location and level the camera...
+      // Go to a location...
       setCameraParams(locations[e.keyCode], scene.camera);
     }
   };

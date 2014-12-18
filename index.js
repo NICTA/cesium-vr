@@ -90,8 +90,21 @@ var setCameraParams = function(_, camera) {
   camera.direction = _.direction;
 };
 
+// Used for movement, update the camera position based on the dt (in secs) and the velocities.
+var move = function(camera, dt, velocities, multiplier) {
+  Cesium.Cartesian3.add(
+    camera.position,
+    Cesium.Cartesian3.multiplyByScalar(camera.direction, dt * velocities.forward * multiplier, new Cesium.Cartesian3()),
+    camera.position);
+  Cesium.Cartesian3.add(camera.position,
+    Cesium.Cartesian3.multiplyByScalar(camera.right, dt * velocities.strafe * multiplier, new Cesium.Cartesian3()),
+    camera.position);
+  Cesium.Cartesian3.add(camera.position,
+    Cesium.Cartesian3.multiplyByScalar(camera.up, dt * velocities.vertical * multiplier, new Cesium.Cartesian3()),
+    camera.position);
+};
+
 var cesiumVR = new CesiumVR(100.0, run);
-var vrEnabled = true;
 
 var container = document.getElementById('container');
 
@@ -114,20 +127,6 @@ function run() {
   var lastTime = (new Date()).getTime();
   var currentTime = (new Date()).getTime();
 
-  // update the camera position based on the dt (in secs) and the 2 velocities.
-  var move = function(camera, dt, velocities, multiplier) {
-    Cesium.Cartesian3.add(
-      camera.position,
-      Cesium.Cartesian3.multiplyByScalar(camera.direction, dt * velocities.forward * multiplier, new Cesium.Cartesian3()),
-      camera.position);
-    Cesium.Cartesian3.add(camera.position,
-      Cesium.Cartesian3.multiplyByScalar(camera.right, dt * velocities.strafe * multiplier, new Cesium.Cartesian3()),
-      camera.position);
-    Cesium.Cartesian3.add(camera.position,
-      Cesium.Cartesian3.multiplyByScalar(camera.up, dt * velocities.vertical * multiplier, new Cesium.Cartesian3()),
-      camera.position);
-  };
-
   var count = 0;
   var fps = 0;
 
@@ -135,41 +134,36 @@ function run() {
     // TODO: Doing this outside the vr rotation breaks mouse interaction etc
     scene.initializeFrame();
 
-    if (vrEnabled) {
-      // Take into account user head rotation
-      cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
-      var masterCam = camera.clone();
+    // Take into account user head rotation
+    cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
+    var masterCam = camera.clone();
 
-      // Render right eye
-      cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
-      scene.render();
+    // Render right eye
+    cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
+    scene.render();
 
-      canvasCopy.copy(canvasL);
+    canvasCopy.copy(canvasL);
 
-      // Render left eye
-      cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
-      scene.render();
+    // Render left eye
+    cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
+    scene.render();
 
-      // Restore camera state
-      cesiumVR.configureSlaveCamera(masterCam, camera);
+    // Restore camera state
+    cesiumVR.configureSlaveCamera(masterCam, camera);
 
-      // Update the camera position based on the current velocity.
-      currentTime = (new Date()).getTime();
-
-      if (FPS_ON) {
-        if(++count % 100 === 0){
-          console.log(fps / 100.0);
-          fps = 0;
-        }
-        fps += (1.0 / ((currentTime - lastTime) / 1000.0));      
+    // Log FPS if required
+    currentTime = (new Date()).getTime();
+    if (FPS_ON) {
+      if(++count % 100 === 0){
+        console.log(fps / 100.0);
+        fps = 0;
       }
-
-      move(camera, (currentTime - lastTime) / 1000.0, velocities, multiplier);
-      lastTime = currentTime;
-    } else {
-      // No VR mode
-      scene.render();
+      fps += (1.0 / ((currentTime - lastTime) / 1000.0));      
     }
+
+    // Move camera based on current velocities.
+    move(camera, (currentTime - lastTime) / 1000.0, velocities, multiplier);
+    lastTime = currentTime;
 
     Cesium.requestAnimationFrame(tick);
   };
@@ -223,12 +217,12 @@ function run() {
       e.preventDefault();
     }
     if (e.keyCode === 'Q'.charCodeAt(0)) {
-      // Move right
+      // Move up
       velocities.vertical = velocity;
       e.preventDefault();
     }
     if (e.keyCode === 'E'.charCodeAt(0)) {
-      // Move left
+      // Move down
       velocities.vertical = -velocity;
       e.preventDefault();
     }
@@ -236,10 +230,6 @@ function run() {
       // Level the camera to the horizon
       cesiumVR.levelCamera(scene.camera);
     }
-    // if (e.keyCode === 'C'.charCodeAt(0)) {
-    //   // Alert the camera parameters.
-    //   alert(JSON.stringify(getCameraParams(scene.camera)));
-    // }
     if (e.keyCode === 16) { // Shift
       multiplier = 2.0;
     }

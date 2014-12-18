@@ -127,7 +127,7 @@ function run() {
   var lastTime = (new Date()).getTime();
   var currentTime = (new Date()).getTime();
 
-  var count = 0;
+  // Using our own FPS counter due to double rendering.
   var fps = new FPS();
 
   var tick = function() {

@@ -127,8 +127,8 @@ function run() {
   var lastTime = (new Date()).getTime();
   var currentTime = (new Date()).getTime();
 
-  var count = 0;
-  var fps = 0;
+  // Using our own FPS counter due to double rendering.
+  var fps = new FPS();
 
   var tick = function() {
     // TODO: Doing this outside the vr rotation breaks mouse interaction etc
@@ -151,20 +151,11 @@ function run() {
     // Restore camera state
     cesiumVR.configureSlaveCamera(masterCam, camera);
 
-    // Log FPS if required
-    currentTime = (new Date()).getTime();
-    if (FPS_ON) {
-      if(++count % 100 === 0){
-        console.log(fps / 100.0);
-        fps = 0;
-      }
-      fps += (1.0 / ((currentTime - lastTime) / 1000.0));      
-    }
-
     // Move camera based on current velocities.
     move(camera, (currentTime - lastTime) / 1000.0, velocities, multiplier);
     lastTime = currentTime;
 
+    document.getElementById('fps').innerHTML = fps.update();
     Cesium.requestAnimationFrame(tick);
   };
 

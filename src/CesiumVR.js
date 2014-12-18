@@ -47,7 +47,7 @@ var CesiumVR = (function() {
 
       if (!that.hmdDevice) {
         // No HMD detected.
-        defaultErrorHandler("No HMD detected");
+        that.errorHandler("No HMD detected");
         return;
       }
 
@@ -62,7 +62,7 @@ var CesiumVR = (function() {
 
       if (!that.sensorDevice) {
         // No HMD sensor detected.
-        defaultErrorHandler("No HMD sensor detected");
+        that.errorHandler("No HMD sensor detected");
         return;
       }
 
@@ -134,7 +134,7 @@ var CesiumVR = (function() {
       navigator.mozGetVRDevices(EnumerateVRDevices);
     } else {
       // No VR API detected...
-      defaultErrorHandler("VR-enabled browser is required for VR mode. Please visit http://mozvr.com/download.html to get Firefox VR.");
+      that.errorHandler("A VR-enabled browser is required for this plugin. Please visit http://mozvr.com/download.html to download a build of Firefox VR.");
     }
   };
 

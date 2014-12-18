@@ -230,6 +230,10 @@ function run() {
       // Level the camera to the horizon
       cesiumVR.levelCamera(scene.camera);
     }
+    if (e.keyCode === 'K'.charCodeAt(0)) {
+      // Level the camera to the horizon
+      showHelpScreen();
+    }
     if (e.keyCode === 16) { // Shift
       multiplier = 2.0;
     }
@@ -265,4 +269,28 @@ function run() {
   window.addEventListener('keydown', onKeyDown, false);
   window.addEventListener('keyup', onKeyUp, false);
   window.setTimeout(onResize, 60);
+
+  var showHelpScreen = function() {
+    var helpString = [
+      "Demo controls:",
+      "",
+      "Enter \t- go into VR Mode",
+      "Esc \t\t- Exit VR Mode",
+      "",
+      "1-5 \t\t- Jump to a location in the globe",
+      "L   \t\t- level the camera to the globe",
+      "",
+      "WASD  \t- Move horizontally",
+      "QE  \t\t- Move vertically",
+      "Shift \t- Increase movement speed",
+      "",
+      "K   \t\t- show this help text",
+    ];
+
+    console.log(helpString.join('\n'));
+
+    alert(helpString.join('\n')); 
+  }
+
+  showHelpScreen();
 }

@@ -295,6 +295,16 @@ var CesiumVR = (function() {
     }
   };
 
+  /**
+   * Gets the frustum offsets
+   */
+  CesiumVR.prototype.getOffsets = function() {
+    return {
+      left  : this.fovScaleAndOffset.left.offset,
+      right : this.fovScaleAndOffset.right.offset
+    };
+  };
+
   return CesiumVR;
 
 }());

@@ -1,7 +1,5 @@
 "use strict";
 
-var FPS_ON = false;
-
 var lofi = false;
 var postprocess = true;
 
@@ -44,7 +42,6 @@ function createTerrainProvider() {
 
 function createScene(canvas) {
   var scene = new Cesium.Scene({canvas : canvas});
-  scene.debugShowFramesPerSecond = FPS_ON;
 
   var primitives = scene.primitives;
 
@@ -104,12 +101,16 @@ var move = function(camera, dt, velocities, multiplier) {
     camera.position);
 };
 
-var cesiumVR = new CesiumVR(100.0, run);
+var cesiumVR = new CesiumVR(1.0, run);
 
 var container = document.getElementById('container');
+var uiDiv     = document.getElementById('ui');
+uiDiv.style.display = 'none';
 
 function run() {
   var scene = createScene(canvasL);
+  var ui = new VRUI(uiDiv, cesiumVR.getOffsets());
+
   var camera = scene.camera;
 
   var prevCameraRotation;
@@ -126,9 +127,6 @@ function run() {
 
   var lastTime = new Date().getTime();
   var currentTime = new Date().getTime();
-
-  // Using our own FPS counter due to double rendering.
-  var fps = new FPS();
 
   var tick = function() {
     // TODO: Doing this outside the vr rotation breaks mouse interaction etc
@@ -156,7 +154,8 @@ function run() {
     move(camera, (currentTime - lastTime) / 1000.0, velocities, multiplier);
     lastTime = currentTime;
 
-    document.getElementById('fps').innerHTML = fps.update();
+    ui.update();
+
     Cesium.requestAnimationFrame(tick);
   };
 
@@ -226,6 +225,10 @@ function run() {
       // Show the help text
       showHelpScreen();
     }
+    if (e.keyCode === 'T'.charCodeAt(0)) {
+      // Toggle the FPS counter
+      ui.toggleShow();
+    }
     if (e.keyCode === 16) { // Shift
       // Speed up user movement
       multiplier = 2.0;
@@ -278,13 +281,13 @@ function run() {
       "QE  \t\t- Move vertically",
       "Shift \t- Increase movement speed",
       "",
+      "T   \t\t- toggle FPS counter",
       "K   \t\t- show this help text",
     ];
-
-    console.log(helpString.join('\n'));
 
     alert(helpString.join('\n')); 
   }
 
-  showHelpScreen();
+  // TODO: Don't commit commented
+  // showHelpScreen();
 }

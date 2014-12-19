@@ -288,6 +288,5 @@ function run() {
     alert(helpString.join('\n')); 
   }
 
-  // TODO: Don't commit commented
-  // showHelpScreen();
+  showHelpScreen();
 }

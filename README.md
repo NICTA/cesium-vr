@@ -3,9 +3,9 @@
 
 # cesium-vr
 
-A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR devices using a VR-enabled browser. Install [Firefox VR](http://mozvr.com/downloads.html) and try the [live demo](http://nicta.github.io/cesium-oculus-plugin/).
+A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR devices using a VR-enabled browser. Install [Firefox VR](http://mozvr.com/downloads.html) and try the [live demo](http://nicta.github.io/cesium-vr/).
 
-[![screengrab](images/screengrab.jpg)](http://nicta.github.io/cesium-oculus-plugin/)
+[![screengrab](images/screengrab.jpg)](http://nicta.github.io/cesium-vr/)
 
 ## Usage
 

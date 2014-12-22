@@ -4,11 +4,13 @@
 var VRUI = (function() {
   "use strict";
 
-  var VRUI = function(uiDiv, fovOffsets) {
+  var VRUI = function(uiDiv, fovOffsets, stereoEnabled) {
     this.div = uiDiv;
-    this.hidden = this.div.style.display == 'none';
+    this.hidden = true;
+    this.div.style.display = this.hidden ? 'none' : 'block';
 
-    console.log(fovOffsets);
+    this.stereo = stereoEnabled;
+    this.fovOffsets = fovOffsets;
 
     // Add 2 left/right divs to contain copies of the same elements.
     var leftEye = document.createElement('div');
@@ -43,8 +45,6 @@ var VRUI = (function() {
     this.leftEyeFps = fpsDiv;
     this.rightEyeFps = fpsDiv.cloneNode(true);
 
-    console.log(this.rightEyeFps);
-
     this.leftEye.appendChild(this.leftEyeFps);
     this.rightEye.appendChild(this.rightEyeFps);
 
@@ -54,6 +54,19 @@ var VRUI = (function() {
     // Update the FPS counter
     this.leftEyeFps.innerHTML = "FPS: " + this.fps.update();
     this.rightEyeFps.innerHTML = this.leftEyeFps.innerHTML;
+  };
+
+  VRUI.prototype.setStereo = function(enabled) {
+    this.stereo = enabled;
+    this.rightEye.style.visibility = this.stereo ? "visible" : "hidden";
+    this.leftEye.style.width = this.stereo ? "50%" : "100%";
+    if (this.stereo) {
+        this.leftEye.style.left = (-this.fovOffsets.left.x * 50) + '%';
+        this.leftEye.style.top = (-this.fovOffsets.left.y * 50) + '%';
+    } else {
+        this.leftEye.style.left = '0%';
+        this.leftEye.style.top = '0%';
+    }
   };
 
   VRUI.prototype.toggleShow = function() {

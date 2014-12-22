@@ -5,6 +5,35 @@ var CesiumVR = (function() {
     alert(msg);
   }
 
+  // Given a hmd device and a eye, returns the aspect ratio for that eye
+  function getAspectRatio(hmdDevice, eye) {
+    var rect = hmdDevice.getRecommendedEyeRenderRect(eye);
+    return rect.width / rect.height;
+  }
+  
+  // Calculates the required scaling and offsetting of a symmetrical fov given an asymmetrical fov.
+  function fovToScaleAndOffset(fov) {
+    var fovPort = {
+      upTan: Math.tan(fov.upDegrees * Math.PI / 180.0),
+      downTan: Math.tan(fov.downDegrees * Math.PI / 180.0),
+      leftTan: Math.tan(fov.leftDegrees * Math.PI / 180.0),
+      rightTan: Math.tan(fov.rightDegrees * Math.PI / 180.0)
+    };
+
+    var xOrigSize = 2 * Math.tan((fov.leftDegrees + fov.rightDegrees) * 0.5 * Math.PI / 180.0);
+    var yOrigSize = 2 * Math.tan((fov.upDegrees + fov.downDegrees) * 0.5 * Math.PI / 180.0);
+
+    var pxscale = Math.abs((fovPort.rightTan + fovPort.leftTan) / xOrigSize);
+    var pxoffset = (fovPort.rightTan - fovPort.leftTan) * 0.5 / (fovPort.rightTan + fovPort.leftTan);
+    var pyscale = Math.abs((fovPort.downTan + fovPort.upTan) / yOrigSize);
+    var pyoffset = (fovPort.downTan - fovPort.upTan) * 0.5 / (fovPort.downTan + fovPort.upTan);
+
+    return {
+      scale: { x : pxscale, y : pyscale },
+      offset: { x : pxoffset, y : pyoffset }
+    };
+  }
+
   /**
    * The main VR handler for Cesium.
    *
@@ -52,7 +81,7 @@ var CesiumVR = (function() {
       }
 
       // Next find a sensor that matches the HMD hardwareUnitId
-      for (var i = 0; i < devices.length; ++i) {
+      for (i = 0; i < devices.length; ++i) {
         if (devices[i] instanceof PositionSensorVRDevice &&
              (!that.hmdDevice || devices[i].hardwareUnitId == that.hmdDevice.hardwareUnitId)) {
           that.sensorDevice = devices[i];
@@ -70,55 +99,26 @@ var CesiumVR = (function() {
       if (that.hmdDevice) {
         // Holds information about the x-axis eye separation in the world.
         that.xEyeTranslation = {
-          'left'  : that.hmdDevice.getEyeTranslation('left').x,
-          'right' : that.hmdDevice.getEyeTranslation('right').x
+          left  : that.hmdDevice.getEyeTranslation('left').x,
+          right : that.hmdDevice.getEyeTranslation('right').x
         };
 
         // Holds information about the recommended FOV for each eye for the detected device.
         that.fovs = {
-          'left'  : that.hmdDevice.getRecommendedEyeFieldOfView('left'),
-          'right' : that.hmdDevice.getRecommendedEyeFieldOfView('right')
+          left  : that.hmdDevice.getRecommendedEyeFieldOfView('left'),
+          right : that.hmdDevice.getRecommendedEyeFieldOfView('right')
         };
 
-        // Given a hmd device and a eye, returns the aspect ratio for that eye
-        var getAspectRatio = function(hmdDevice, eye) {
-          var rect = hmdDevice.getRecommendedEyeRenderRect(eye);
-          return rect.width / rect.height;
-        };
-        
         // Holds the aspect ratio information about each eye
         that.fovAspectRatio = {
-          'left'  : getAspectRatio(that.hmdDevice, 'left'),
-          'right' : getAspectRatio(that.hmdDevice, 'right')
-        }
-
-        // Calculates the required scaling and offsetting of a symmetrical fov given an asymmetrical fov.
-        var FovToScaleAndOffset = function(fov) {
-          var fovPort = {
-            upTan: Math.tan(fov.upDegrees * Math.PI / 180.0),
-            downTan: Math.tan(fov.downDegrees * Math.PI / 180.0),
-            leftTan: Math.tan(fov.leftDegrees * Math.PI / 180.0),
-            rightTan: Math.tan(fov.rightDegrees * Math.PI / 180.0)
-          };
-
-          var xOrigSize = 2 * Math.tan((fov.leftDegrees + fov.rightDegrees) * 0.5 * Math.PI / 180.0);
-          var yOrigSize = 2 * Math.tan((fov.upDegrees + fov.downDegrees) * 0.5 * Math.PI / 180.0);
-
-          var pxscale = Math.abs((fovPort.rightTan + fovPort.leftTan) / xOrigSize);
-          var pxoffset = (fovPort.rightTan - fovPort.leftTan) * 0.5 / (fovPort.rightTan + fovPort.leftTan);
-          var pyscale = Math.abs((fovPort.downTan + fovPort.upTan) / yOrigSize);
-          var pyoffset = (fovPort.downTan - fovPort.upTan) * 0.5 / (fovPort.downTan + fovPort.upTan);
-
-          return {
-            scale: { x : pxscale, y : pyscale },
-            offset: { x : pxoffset, y : pyoffset }
-          };
+          left  : getAspectRatio(that.hmdDevice, 'left'),
+          right : getAspectRatio(that.hmdDevice, 'right')
         };
 
         // Holds the fov scaling and offset information for each eye.
         that.fovScaleAndOffset = {
-          'left'  : FovToScaleAndOffset(that.fovs['left']),
-          'right' : FovToScaleAndOffset(that.fovs['right'])
+          left  : fovToScaleAndOffset(that.fovs.left),
+          right : fovToScaleAndOffset(that.fovs.right)
         };
       }
 

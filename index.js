@@ -68,6 +68,19 @@ function createScene(canvas) {
     negativeZ : skyBoxBaseUrl + '_mz.jpg'
   });
 
+  var modelMatrix = Cesium.Transforms.northEastDownToFixedFrame(Cesium.Cartesian3.fromDegrees(-123.0744619, 44.0503706, 500));
+  var model = Cesium.Model.fromGltf({
+    url : 'lib/cesium/SampleData/models/CesiumAir/Cesium_Air.gltf',
+    modelMatrix : modelMatrix,
+    scale : 20.0,
+    minimumPixelSize : 50,
+  });
+  scene.primitives.add(model);
+  // OIT is enabled when you add the model but is currently incompatible with postprocessing filters
+  scene._oit.isSupported = function() {
+    return false;
+  }
+
   return scene;
 }
 
@@ -102,14 +115,14 @@ var move = function(camera, dt, velocities, multiplier) {
 };
 
 var cesiumVR = new CesiumVR(1.0, run);
+var vrEnabled = true;
 
 var container = document.getElementById('container');
 var uiDiv     = document.getElementById('ui');
-uiDiv.style.display = 'none';
 
 function run() {
   var scene = createScene(canvasL);
-  var ui = new VRUI(uiDiv, cesiumVR.getOffsets());
+  var ui = new VRUI(uiDiv, cesiumVR.getOffsets(), vrEnabled);
 
   var camera = scene.camera;
 
@@ -132,22 +145,26 @@ function run() {
     // TODO: Doing this outside the vr rotation breaks mouse interaction etc
     scene.initializeFrame();
 
-    // Take into account user head rotation
-    cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
-    var masterCam = camera.clone();
+    if(vrEnabled){
+      // Take into account user head rotation
+      cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
+      var masterCam = camera.clone();
 
-    // Render right eye
-    cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
-    scene.render();
+      // Render right eye
+      cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
+      scene.render();
 
-    canvasCopy.copy(canvasL);
+      canvasCopy.copy(canvasL);
 
-    // Render left eye
-    cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
-    scene.render();
+      // Render left eye
+      cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
+      scene.render();
 
-    // Restore camera state
-    cesiumVR.configureSlaveCamera(masterCam, camera);
+      // Restore camera state
+      cesiumVR.configureSlaveCamera(masterCam, camera);
+    } else {
+      scene.render();
+    }
 
     // Move camera based on current velocities.
     currentTime = new Date().getTime();
@@ -165,8 +182,7 @@ function run() {
   var onResizeScene = function(canvas, scene) {
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
-    var supersample = 1.0; // Could increase this to >1 to increase VR resolution
-
+    var supersample = vrEnabled ? 1.0 : 1.0; // Could increase this to >1 to increase VR resolution
     var width = canvas.clientWidth * supersample;
     var height = canvas.clientHeight * supersample;
 
@@ -179,11 +195,11 @@ function run() {
   };
 
   var onResize = function() {
-    onResizeScene(canvasL, scene);
     onResizeScene(canvasR, scene);
+    onResizeScene(canvasL, scene);
   };
 
-  var velocity = 250
+  var velocity = 250;
 
   // Basic WASD keys implemented w/ shift for speed up.
   var onKeyDown = function(e) {
@@ -225,9 +241,21 @@ function run() {
       // Show the help text
       showHelpScreen();
     }
-    if (e.keyCode === 'T'.charCodeAt(0)) {
+    if (e.keyCode === 'F'.charCodeAt(0)) {
       // Toggle the FPS counter
       ui.toggleShow();
+    }
+    if (e.keyCode === 'P'.charCodeAt(0)) {
+      // Print current camera position
+      console.log(JSON.stringify(getCameraParams(scene.camera)));
+    }
+    if (e.keyCode === 'T'.charCodeAt(0)){
+      // Toggle stereo globe
+      vrEnabled = !vrEnabled;
+      ui.setStereo(vrEnabled);
+      document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "visible" : "hidden";
+      document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
+      onResize();
     }
     if (e.keyCode === 16) { // Shift
       // Speed up user movement
@@ -274,19 +302,20 @@ function run() {
       "Enter \t- go into VR Mode",
       "Esc \t\t- Exit VR Mode",
       "",
-      "1-5 \t\t- Jump to a location in the globe",
+      "1-6 \t\t- Jump to a location in the globe",
       "L   \t\t- level the camera to the globe",
       "",
       "WASD  \t- Move horizontally",
       "QE  \t\t- Move vertically",
       "Shift \t- Increase movement speed",
       "",
-      "T   \t\t- toggle FPS counter",
+      "T   \t\t- toggle stereo display",
+      "F   \t\t- toggle FPS counter",
       "K   \t\t- show this help text",
     ];
 
     alert(helpString.join('\n')); 
-  }
+  };
 
   showHelpScreen();
 }

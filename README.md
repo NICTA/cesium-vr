@@ -43,7 +43,7 @@ We have applied a small modification to Cesium's PerspectiveFrustum class.
 This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas. These modifications can currently be found in the [`postprocess-hook`](https://github.com/AnalyticalGraphicsInc/cesium/tree/postprocess-hook) branch of Cesium.
 
 ### Testing
-At time of writing we have tested **cesium-vr** in Firefox VR (36.01a) on Windows and OSX with the Oculus Rift Development Kit 1 and 2.
+At time of writing we have tested **cesium-vr** in Firefox VR (36.01a) on Windows and OSX using the Oculus Rift Development Kit 1 & 2 with Oculus Runtime 0.4.4.
 Stereo rendering should work on other platforms but WebVR may not.
 
 ### WebVR

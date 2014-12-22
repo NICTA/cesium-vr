@@ -1,82 +1,59 @@
 <a href="http://nicta.com.au/"><img align="right" src="images/nicta_logo.png"></a>
 <br>
 
-cesium-oculus-plugin
-====================
+# cesium-vr
 
-A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support the [Oculus Rift VR headset](http://www.oculusvr.com/).
-Try the [live demo](http://nicta.github.io/cesium-oculus-plugin/) (click through the dialogs if you don't have an Oculus & VR.js handy).
+A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR devices using a VR-enabled browser. Install [Firefox VR](http://mozvr.com/downloads.html) and try the [live demo](http://nicta.github.io/cesium-oculus-plugin/).
 
-[![screengrab](/images/screengrab.jpg)](http://nicta.github.io/cesium-oculus-plugin/)
+[![screengrab](images/screengrab.jpg)](http://nicta.github.io/cesium-oculus-plugin/)
 
-### Build
+## Usage
 
-1. Clone the repo
-
-2. Get the git submodules (see License note below)
-
-        cd ~/git/cesium-oculus-plugin
-        git submodule init
-        git submodule update
-
-3. Build Cesium (optional, a built version is included)
-
-        cd ~/git/cesium-oculus-plugin
-        cd lib/cesium
-        ./Tools/apache-ant-1.8.2/bin/ant minify
-        # Now copy or symlink the Build dir to ../cesium-build
-
-### Use
-
+* Install [Firefox VR](http://mozvr.com/downloads.html), an experimental Firefox build with VR interfaces.
 * Run via a local http server, e.g. with node.js http-server
 
-        cd ~/git/cesium-oculus-plugin
-        http-server
+    ```bash
+    cd cesium-vr
+    http-server
+    ```
 
-* (optional) Plug in your Oculus headset.  The code should still work even if you don't have one.
-* (optional) Install the [VR.js](https://github.com/benvanik/vr.js/tree/master) plugin and make sure it's working with your Oculus.
-* Hit F11 to make the browser fullscreen on your Oculus display.
-* The mouse can be used on the left eye to navigate.  Number keys take you to some pre-set locations.  Arrow keys allow some movement.  'T' key will toggle oculus mode.
+* (optional) Plug in your VR headset. The code should still work even if you don't have one.
+* Start up Firefox VR and visit `http://localhost:8080`.
+* Hit `Enter` to make the browser fullscreen on your VR display.
+* The mouse can be used on the left eye to navigate.  Number keys take you to some pre-set locations. Hit `L` at any time to level the camera to the globe surface.
+* The `WASD` keys allow horizontal movement with `Q` and `E` allowing vertical movement. Holding `Shift` speeds up all movement.
 
-### About
+If you are having any problems, visit [mozvr.com](http://mozvr.com) to check you have correctly configured your VR device for use in Firefox VR. If you're still having troubles, feel free to post an issue on the GitHub repository.
 
-#### Stereo Rendering
+## About
+
+### Stereo Rendering
 To render stereo images within Cesium using a single scene and dual canvases the workflow is as follows.
 
 For each frame:
 
-* Set scene and postprocess parameters for right eye.
+* Set scene and camera parameters for right eye.
 * Render into left eye canvas.
 * Canvas copy from left eye canvas to right eye canvas.
-* Set scene and postprocess patameters for left eye.
+* Set scene and camera parameters for left eye.
 * Render into left eye canvas.
 
-#### Postprocessing
-The Oculus reference shader provided in the Oculus SDK compensates for distortion and chromatic aberration.
-We have applied a minimal modification to the reference shader which compensates for the coordinate system difference of rendering to a separate canvas for each eye.
-Applying a postprocessing filter is facilitated in Cesium by using the postprocess-hook branch.
-
-#### Frustum offsetting
+### Frustum offsetting
 We have applied a small modification to Cesium's PerspectiveFrustum class.
-This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas.
+This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas. These modifications can currently be found in the [`postprocess-hook`](https://github.com/AnalyticalGraphicsInc/cesium/tree/postprocess-hook) branch of Cesium.
 
-#### USB Input
-We are currently leveraging the [VR.js](https://github.com/benvanik/vr.js/tree/master) browser plugin.
-This allows us to access the hardware parameters of the Oculus device, along with low latency orientation values to hook into the Cesium 3D camera.
-We may look to a different solution for this component in the future.
+### Testing
+At time of writing we have tested **cesium-vr** in Firefox VR (36.01a) on Windows and OSX using the Oculus Rift Development Kit 1 & 2 with Oculus Runtime 0.4.4.
+Stereo rendering should work on other platforms but WebVR may not.
 
-#### Testing
-At time of writing we have tested **cesium-oculus-plugin** in Chrome and Firefox on Windows with the Oculus Rift Development Kit 1.
-Stereo rendering should work on other platforms but VR.js may not.
+### WebVR
+For more information regarding WebVR or the VR-enabled browsers, checkout [mozvr.com](http://mozvr.com), [Vladimir Vukićević's blog](http://blog.bitops.com/blog/2014/06/26/first-steps-for-vr-on-the-web/) (Firefox VR engineer) or [Brandon Jones' blog](http://blog.tojicode.com/2014/07/bringing-vr-to-chrome.html) (Chrome VR engineer).
 
-#### Contributing
+### Contributing
 Please let us know if you spot any errors in our implementation or have a useful extension.  The best way to do this is via a pull request.
 
-### License
+## License
 
-The **cesium-oculus-plugin** plugin code is released under Apache 2.0 (see LICENSE.md)
+The **cesium-vr** plugin code is released under Apache 2.0 (see LICENSE.md).
 
-This software will need to go and acquire third party software in order to work properly;
-and NICTA is not suggesting that downloading and using the third party software is necessarily
-compliant with, or compatible with the Apache 2.0 license; and
-Use of the third party software is entirely at the discretion (and risk) of the licensee.
+This software will need to go and acquire third party software in order to work properly; and NICTA is not suggesting that downloading and using the third party software is necessarily compliant with, or compatible with the Apache 2.0 license; and use of the third party software is entirely at the discretion (and risk) of the licensee.

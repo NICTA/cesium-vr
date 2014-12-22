@@ -42,9 +42,8 @@ function createTerrainProvider() {
 
 function createScene(canvas) {
   var scene = new Cesium.Scene({canvas : canvas});
-  var primitives = scene.primitives;
 
-  scene.camera.frustum._fovy = Cesium.Math.toRadians(100.0);
+  var primitives = scene.primitives;
 
   var cb = new Cesium.Globe(ellipsoid);
   cb.imageryLayers.addImageryProvider(createImageryProvider());
@@ -71,16 +70,12 @@ function createScene(canvas) {
 
   var modelMatrix = Cesium.Transforms.northEastDownToFixedFrame(Cesium.Cartesian3.fromDegrees(-123.0744619, 44.0503706, 500));
   var model = Cesium.Model.fromGltf({
-    url : 'lib/cesium/Apps/SampleData/models/CesiumAir/Cesium_Air.gltf',
+    url : 'lib/cesium/SampleData/models/CesiumAir/Cesium_Air.gltf',
     modelMatrix : modelMatrix,
     scale : 20.0,
     minimumPixelSize : 50,
   });
   scene.primitives.add(model);
-  // OIT is enabled when you add the model but is currently incompatible with postprocessing filters
-  scene._oit.isSupported = function() {
-    return false;
-  }
 
   return scene;
 }
@@ -101,55 +96,78 @@ var setCameraParams = function(_, camera) {
   camera.direction = _.direction;
 };
 
-var levelTheCamera = function(camera) {
-  Cesium.Cartesian3.normalize(camera.position, camera.up);
-  Cartesian3.cross(camera.direction, camera.up, camera.right);
+// Used for movement, update the camera position based on the dt (in secs) and the velocities.
+var move = function(camera, dt, velocities, multiplier) {
+  Cesium.Cartesian3.add(
+    camera.position,
+    Cesium.Cartesian3.multiplyByScalar(camera.direction, dt * velocities.forward * multiplier, new Cesium.Cartesian3()),
+    camera.position);
+  Cesium.Cartesian3.add(camera.position,
+    Cesium.Cartesian3.multiplyByScalar(camera.right, dt * velocities.strafe * multiplier, new Cesium.Cartesian3()),
+    camera.position);
+  Cesium.Cartesian3.add(camera.position,
+    Cesium.Cartesian3.multiplyByScalar(camera.up, dt * velocities.vertical * multiplier, new Cesium.Cartesian3()),
+    camera.position);
 };
 
-var cesiumOculus = new CesiumOculus(run);
-var oculusEnabled = true;
+var cesiumVR = new CesiumVR(1.0, run);
+var vrEnabled = true;
+
+var container = document.getElementById('container');
+var uiDiv     = document.getElementById('ui');
 
 function run() {
   var scene = createScene(canvasL);
+  var ui = new VRUI(uiDiv, cesiumVR.getOffsets(), vrEnabled);
+
   var camera = scene.camera;
-  var eyeSeparation = 5.0;
+
   var prevCameraRotation;
 
   var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
-  
-  var passThroughFilter = new Cesium.CustomPostProcess(Cesium._shaders.PassThrough, undefined);
+
+  var velocities = {
+    forward  : 0.0,
+    strafe   : 0.0,
+    vertical : 0.0
+  };
+
+  var multiplier = 1.0;
+
+  var lastTime = new Date().getTime();
+  var currentTime = new Date().getTime();
 
   var tick = function() {
-    // TODO: Doing this outside the oculus rotation breaks mouse interaction etc
+    // TODO: Doing this outside the vr rotation breaks mouse interaction etc
     scene.initializeFrame();
-    
-    if(oculusEnabled){
-      // Store camera state
-      var originalCamera = camera.clone();
-  
+
+    if(vrEnabled){
       // Take into account user head rotation
-      cesiumOculus.applyOculusRotation(camera, CesiumOculus.getCameraRotationMatrix(camera), cesiumOculus.getRotation());
-      var modCamera = camera.clone();
-  
+      cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
+      var masterCam = camera.clone();
+
       // Render right eye
-      CesiumOculus.slaveCameraUpdate(modCamera, eyeSeparation * 0.5, camera);
-      cesiumOculus.setSceneParams(scene, 'right');
+      cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
       scene.render();
-  
+
       canvasCopy.copy(canvasL);
-  
+
       // Render left eye
-      CesiumOculus.slaveCameraUpdate(modCamera, -eyeSeparation * 0.5, camera);
-      cesiumOculus.setSceneParams(scene, 'left');
+      cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
       scene.render();
-  
-      // Restore state
-      CesiumOculus.slaveCameraUpdate(originalCamera, 0.0, camera);
-      CesiumOculus.setCameraState(originalCamera, camera);
+
+      // Restore camera state
+      cesiumVR.configureSlaveCamera(masterCam, camera);
     } else {
-      scene.customPostProcess = passThroughFilter;
       scene.render();
     }
+
+    // Move camera based on current velocities.
+    currentTime = new Date().getTime();
+    move(camera, (currentTime - lastTime) / 1000.0, velocities, multiplier);
+    lastTime = currentTime;
+
+    ui.update();
 
     Cesium.requestAnimationFrame(tick);
   };
@@ -160,7 +178,7 @@ function run() {
   var onResizeScene = function(canvas, scene) {
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
-    var supersample = oculusEnabled ? 1.5 : 1.0;
+    var supersample = vrEnabled ? 1.0 : 1.0; // Could increase this to >1 to increase VR resolution
     var width = canvas.clientWidth * supersample;
     var height = canvas.clientHeight * supersample;
 
@@ -170,7 +188,6 @@ function run() {
 
     canvas.width = width;
     canvas.height = height;
-    scene.camera.frustum.aspectRatio = width / height;
   };
 
   var onResize = function() {
@@ -178,36 +195,123 @@ function run() {
     onResizeScene(canvasL, scene);
   };
 
-  var moveForward = function(camera, amount) {
-    Cesium.Cartesian3.add(camera.position, Cesium.Cartesian3.multiplyByScalar(camera.direction, amount), camera.position);
-  };
+  var velocity = 250;
 
+  // Basic WASD keys implemented w/ shift for speed up.
   var onKeyDown = function(e) {
-    // alert(JSON.stringify(e.keyCode));
-    if (e.keyCode === 38) {
-      moveForward(scene.camera, 10.0);
+    if (e.keyCode === 'W'.charCodeAt(0)) {
+      // Move forward
+      velocities.forward = velocity;
       e.preventDefault();
     }
-    if (e.keyCode === 40) {
-      moveForward(scene.camera, -10.0);
+    if (e.keyCode === 'S'.charCodeAt(0)) {
+      // Move backwards
+      velocities.forward = -velocity;
       e.preventDefault();
     }
-    if (e.keyCode === 73)
-      alert(JSON.stringify(getCameraParams(scene.camera)));
-    if (e.keyCode === 76)
-      levelTheCamera(scene.camera);
-    if (e.keyCode === 84){
-      oculusEnabled = !oculusEnabled;
-      document.getElementById("cesiumContainerRight").style.visibility = oculusEnabled ? "visible" : "hidden";
-      document.getElementById("cesiumContainerLeft").style.width = oculusEnabled ? "50%" : "100%";
+    if (e.keyCode === 'D'.charCodeAt(0)) {
+      // Move right
+      velocities.strafe = velocity;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'A'.charCodeAt(0)) {
+      // Move left
+      velocities.strafe = -velocity;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'Q'.charCodeAt(0)) {
+      // Move up
+      velocities.vertical = velocity;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'E'.charCodeAt(0)) {
+      // Move down
+      velocities.vertical = -velocity;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'L'.charCodeAt(0)) {
+      // Level the camera to the horizon
+      cesiumVR.levelCamera(scene.camera);
+    }
+    if (e.keyCode === 'K'.charCodeAt(0)) {
+      // Show the help text
+      showHelpScreen();
+    }
+    if (e.keyCode === 'F'.charCodeAt(0)) {
+      // Toggle the FPS counter
+      ui.toggleShow();
+    }
+    if (e.keyCode === 'P'.charCodeAt(0)) {
+      // Print current camera position
+      console.log(JSON.stringify(getCameraParams(scene.camera)));
+    }
+    if (e.keyCode === 'T'.charCodeAt(0)){
+      // Toggle stereo globe
+      vrEnabled = !vrEnabled;
+      ui.setStereo(vrEnabled);
+      document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "visible" : "hidden";
+      document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
       onResize();
     }
+    if (e.keyCode === 16) { // Shift
+      // Speed up user movement
+      multiplier = 2.0;
+    }
+    if (e.keyCode === 13) { // Enter
+      // Go fullscreen into VR Mode...
+      cesiumVR.goFullscreenVR(container);
+    }
     if (typeof locations[e.keyCode] !== 'undefined') {
+      // Go to a location...
       setCameraParams(locations[e.keyCode], scene.camera);
     }
   };
 
+  var onKeyUp = function(e) {
+    if (e.keyCode === 'W'.charCodeAt(0) || e.keyCode === 'S'.charCodeAt(0)) {
+      velocities.forward = 0;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'D'.charCodeAt(0) || e.keyCode === 'A'.charCodeAt(0)) {
+      velocities.strafe = 0;
+      e.preventDefault();
+    }
+    if (e.keyCode === 'Q'.charCodeAt(0) || e.keyCode === 'E'.charCodeAt(0)) {
+      velocities.vertical = 0;
+      e.preventDefault();
+    }
+    if (e.keyCode === 16) { // Shift
+      multiplier = 1.0;
+    }
+
+  };
+
   window.addEventListener('resize', onResize, false);
   window.addEventListener('keydown', onKeyDown, false);
+  window.addEventListener('keyup', onKeyUp, false);
   window.setTimeout(onResize, 60);
+
+  var showHelpScreen = function() {
+    var helpString = [
+      "Demo controls:",
+      "",
+      "Enter \t- go into VR Mode",
+      "Esc \t\t- Exit VR Mode",
+      "",
+      "1-6 \t\t- Jump to a location in the globe",
+      "L   \t\t- level the camera to the globe",
+      "",
+      "WASD  \t- Move horizontally",
+      "QE  \t\t- Move vertically",
+      "Shift \t- Increase movement speed",
+      "",
+      "T   \t\t- toggle stereo display",
+      "F   \t\t- toggle FPS counter",
+      "K   \t\t- show this help text",
+    ];
+
+    alert(helpString.join('\n')); 
+  };
+
+  showHelpScreen();
 }

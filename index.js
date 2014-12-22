@@ -76,10 +76,6 @@ function createScene(canvas) {
     minimumPixelSize : 50,
   });
   scene.primitives.add(model);
-  // OIT is enabled when you add the model but is currently incompatible with postprocessing filters
-  scene._oit.isSupported = function() {
-    return false;
-  }
 
   return scene;
 }

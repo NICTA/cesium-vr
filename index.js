@@ -1,15 +1,17 @@
 "use strict";
 
 var lofi = false;
-var postprocess = true;
+var vrEnabled = false;
 
 var canvasL = document.createElement('canvas');
 canvasL.className = "fullSize";
 document.getElementById('cesiumContainerLeft').appendChild(canvasL);
+document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
 
 var canvasR = document.createElement('canvas');
 canvasR.className = "fullSize";
 document.getElementById('cesiumContainerRight').appendChild(canvasR);
+document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "visible" : "hidden";
 
 var canvasCopy = new CanvasCopy(canvasR, false);
 
@@ -68,14 +70,14 @@ function createScene(canvas) {
     negativeZ : skyBoxBaseUrl + '_mz.jpg'
   });
 
-  var modelMatrix = Cesium.Transforms.northEastDownToFixedFrame(Cesium.Cartesian3.fromDegrees(-123.0744619, 44.0503706, 500));
-  var model = Cesium.Model.fromGltf({
-    url : 'lib/cesium/SampleData/models/CesiumAir/Cesium_Air.gltf',
-    modelMatrix : modelMatrix,
-    scale : 20.0,
-    minimumPixelSize : 50,
-  });
-  scene.primitives.add(model);
+  // var modelMatrix = Cesium.Transforms.northEastDownToFixedFrame(Cesium.Cartesian3.fromDegrees(-123.0744619, 44.0503706, 500));
+  // var model = Cesium.Model.fromGltf({
+  //   url : 'lib/models/CesiumAir/Cesium_Air.gltf',
+  //   modelMatrix : modelMatrix,
+  //   scale : 20.0,
+  //   minimumPixelSize : 50,
+  // });
+  // scene.primitives.add(model);
 
   return scene;
 }
@@ -110,8 +112,7 @@ var move = function(camera, dt, velocities, multiplier) {
     camera.position);
 };
 
-var cesiumVR = new CesiumVR(1.0, run);
-var vrEnabled = true;
+var cesiumVR = new CesiumVR(100.0, run);
 
 var container = document.getElementById('container');
 var uiDiv     = document.getElementById('ui');
@@ -188,11 +189,20 @@ function run() {
 
     canvas.width = width;
     canvas.height = height;
+
+    scene.camera.frustum.aspectRatio = width / height;
   };
 
   var onResize = function() {
     onResizeScene(canvasR, scene);
     onResizeScene(canvasL, scene);
+  };
+
+  var setVRContainers = function() {
+    ui.setStereo(vrEnabled);
+    document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "visible" : "hidden";
+    document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
+    onResize();
   };
 
   var velocity = 250;
@@ -232,34 +242,32 @@ function run() {
     if (e.keyCode === 'L'.charCodeAt(0)) {
       // Level the camera to the horizon
       cesiumVR.levelCamera(scene.camera);
+      e.preventDefault();
     }
     if (e.keyCode === 'K'.charCodeAt(0)) {
       // Show the help text
       showHelpScreen();
+      e.preventDefault();
     }
     if (e.keyCode === 'F'.charCodeAt(0)) {
       // Toggle the FPS counter
       ui.toggleShow();
+      e.preventDefault();
     }
     if (e.keyCode === 'P'.charCodeAt(0)) {
       // Print current camera position
       console.log(JSON.stringify(getCameraParams(scene.camera)));
-    }
-    if (e.keyCode === 'T'.charCodeAt(0)){
-      // Toggle stereo globe
-      vrEnabled = !vrEnabled;
-      ui.setStereo(vrEnabled);
-      document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "visible" : "hidden";
-      document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
-      onResize();
+      e.preventDefault();
     }
     if (e.keyCode === 16) { // Shift
       // Speed up user movement
       multiplier = 2.0;
+      e.preventDefault();
     }
     if (e.keyCode === 13) { // Enter
-      // Go fullscreen into VR Mode...
+      // Turn on both Canvases and enter fullscreen
       cesiumVR.goFullscreenVR(container);
+      e.preventDefault();
     }
     if (typeof locations[e.keyCode] !== 'undefined') {
       // Go to a location...
@@ -283,7 +291,6 @@ function run() {
     if (e.keyCode === 16) { // Shift
       multiplier = 1.0;
     }
-
   };
 
   window.addEventListener('resize', onResize, false);
@@ -305,13 +312,19 @@ function run() {
       "QE  \t\t- Move vertically",
       "Shift \t- Increase movement speed",
       "",
-      "T   \t\t- toggle stereo display",
       "F   \t\t- toggle FPS counter",
       "K   \t\t- show this help text",
     ];
 
     alert(helpString.join('\n')); 
   };
+
+  // Enable/disable VR mode when entering/leaving fullscreen.
+  var fullscreenchange = container.mozRequestFullScreen ? "mozfullscreenchange" : "webkitfullscreenchange";
+  document.addEventListener(fullscreenchange, function() {
+    vrEnabled = document.mozFullScreenElement || document.webkitFullscreenElement;
+    setVRContainers();
+  }, false);
 
   showHelpScreen();
 }

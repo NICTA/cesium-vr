@@ -9,7 +9,6 @@ var VRUI = (function() {
     this.hidden = true;
     this.div.style.display = this.hidden ? 'none' : 'block';
 
-    this.stereo = stereoEnabled;
     this.fovOffsets = fovOffsets;
 
     // Add 2 left/right divs to contain copies of the same elements.
@@ -48,6 +47,7 @@ var VRUI = (function() {
     this.leftEye.appendChild(this.leftEyeFps);
     this.rightEye.appendChild(this.rightEyeFps);
 
+    this.setStereo(stereoEnabled);
   };
 
   VRUI.prototype.update = function() {

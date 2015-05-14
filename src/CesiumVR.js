@@ -6,8 +6,8 @@ var CesiumVR = (function() {
   }
 
   // Given a hmd device and a eye, returns the aspect ratio for that eye
-  function getAspectRatio(hmdDevice, eye) {
-    var rect = hmdDevice.getRecommendedEyeRenderRect(eye);
+  function getAspectRatio(params) {
+    var rect = params.renderRect;
     return rect.width / rect.height;
   }
   
@@ -40,7 +40,7 @@ var CesiumVR = (function() {
    * Provide a value to scale the camera distance for the eyes. This
    * increases/decreases the sense of scale in Cesium.
    * 
-   * Use 1.0 for a realistic sense of scale and larger values (~100.0-1000.0) for
+   * Use 1.0 for a realistic sense of scale and larger values (~10.0-100.0) for
    * a model/diorama feel.
    * 
    * @param {Number}   scale        A scalar for the Interpupillary Distance.
@@ -98,21 +98,25 @@ var CesiumVR = (function() {
       // We now have our devices... let's calculate all the required setup information...
       if (that.hmdDevice) {
         // Holds information about the x-axis eye separation in the world.
+
+        var leftParams = that.hmdDevice.getEyeParameters('left');
+        var rightParams = that.hmdDevice.getEyeParameters('right');
+
         that.xEyeTranslation = {
-          left  : that.hmdDevice.getEyeTranslation('left').x,
-          right : that.hmdDevice.getEyeTranslation('right').x
+          left  : leftParams.eyeTranslation.x,
+          right : rightParams.eyeTranslation.x
         };
 
         // Holds information about the recommended FOV for each eye for the detected device.
         that.fovs = {
-          left  : that.hmdDevice.getRecommendedEyeFieldOfView('left'),
-          right : that.hmdDevice.getRecommendedEyeFieldOfView('right')
+          left  : leftParams.recommendedFieldOfView,
+          right : rightParams.recommendedFieldOfView
         };
 
         // Holds the aspect ratio information about each eye
         that.fovAspectRatio = {
-          left  : getAspectRatio(that.hmdDevice, 'left'),
-          right : getAspectRatio(that.hmdDevice, 'right')
+          left  : getAspectRatio(leftParams),
+          right : getAspectRatio(rightParams)
         };
 
         // Holds the fov scaling and offset information for each eye.
@@ -183,8 +187,14 @@ var CesiumVR = (function() {
     var translation = 0.0;
 
     // Start with a master copy
-    slave.frustum.fov = master.frustum.fov;
-    slave.frustum.aspectRatio = master.frustum.aspectRatio;
+    slave.position = Cesium.Cartesian3.clone(master.position);
+    slave.direction = Cesium.Cartesian3.clone(master.direction);
+    slave.up = Cesium.Cartesian3.clone(master.up);
+    slave.right = Cesium.Cartesian3.clone(master.right);
+    slave._transform = Cesium.Matrix4.clone(master.transform);
+    slave._transformChanged = true;
+    master.frustum.clone(slave.frustum);
+
     slave.frustum.setOffset(0.0, 0.0);
 
     if (eye === 'right' || eye === 'left') {
@@ -203,23 +213,10 @@ var CesiumVR = (function() {
       }
     }
 
-    // Set the position and orientation using the master camera.
-    var pos = Cesium.Cartesian3.clone(master.position);
-    var target = Cesium.Cartesian3.clone(master.direction);
-    var up = Cesium.Cartesian3.clone(master.up);
-
-    var right = new Cesium.Cartesian3();
-    Cesium.Cartesian3.cross(master.direction, master.up, right);
-
     // translate camera for given eye
-    Cesium.Cartesian3.multiplyByScalar(right, translation, right);
-    Cesium.Cartesian3.add(pos, right, pos);
-
-    Cesium.Cartesian3.multiplyByScalar(target, 10000, target);
-    Cesium.Cartesian3.add(target, pos, target);
-
-    slave.lookAt(pos, target, up);
-
+    var tempRight = Cesium.Cartesian3.clone(slave.right);
+    Cesium.Cartesian3.multiplyByScalar(tempRight, translation, tempRight);
+    Cesium.Cartesian3.add(slave.position, tempRight, slave.position);
   };
 
   CesiumVR.setCameraRotationMatrix = function(rotation, camera) {
@@ -270,7 +267,7 @@ var CesiumVR = (function() {
    * Reset the HMD sensor.
    */
   CesiumVR.prototype.zeroSensor = function() {
-    this.sensorDevice.zeroSensor();
+    this.sensorDevice.resetSensor();
   };
 
   /**
@@ -280,11 +277,7 @@ var CesiumVR = (function() {
    * @param  {HTML element} container
    */
   CesiumVR.prototype.goFullscreenVR = function(container) {
-    if (container.requestFullscreen) {
-      container.requestFullscreen({
-        vrDisplay: this.hmdDevice
-      });
-    } else if (container.mozRequestFullScreen) {
+    if (container.mozRequestFullScreen) {
       container.mozRequestFullScreen({
         vrDisplay: this.hmdDevice
       });

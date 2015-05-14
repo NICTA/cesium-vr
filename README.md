@@ -9,6 +9,7 @@ A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR dev
 
 ## Usage
 
+
 * Install [Firefox VR](http://mozvr.com/downloads.html), an experimental Firefox build with VR interfaces.
 * Run via a local http server, e.g. with node.js http-server
 
@@ -24,6 +25,15 @@ A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR dev
 * The `WASD` keys allow horizontal movement with `Q` and `E` allowing vertical movement. Holding `Shift` speeds up all movement.
 
 If you are having any problems, visit [mozvr.com](http://mozvr.com) to check you have correctly configured your VR device for use in Firefox VR. If you're still having troubles, feel free to post an issue on the GitHub repository.
+
+### 14/05/2014 Notes
+
+- Requires Oculus 0.5.x runtime.
+- Latest version of Firefox Nightly
+- Plugin from mozvr.com to disable e10s (multithreaded tab support).
+
+
+
 
 ## About
 

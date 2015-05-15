@@ -10,7 +10,7 @@ A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR dev
 ## Usage
 
 - Make sure you have the Oculus 0.5.x runtime installed.
-- Install [Firefox Nightly and the WebVR enabler](http://mozvr.com/downloads.html).
+- Install [Firefox Nightly and the WebVR enabler](http://mozvr.com/downloads/).
 - Run via a local http server from the project root directory, e.g. with node.js http-server
 
     ```

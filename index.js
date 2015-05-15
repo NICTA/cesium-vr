@@ -327,4 +327,7 @@ function run() {
   }, false);
 
   showHelpScreen();
+
+  setCameraParams(locations["49"], scene.camera);
+  cesiumVR.levelCamera(scene.camera);
 }

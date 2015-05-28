@@ -50,6 +50,8 @@ var CesiumVR = (function() {
   var CesiumVR = function(scale, callback, errorHandler) {
     this.errorHandler = typeof errorHandler === 'undefined' ? defaultErrorHandler : errorHandler;
 
+    this.errorMsg = "A VR-enabled browser is required for Virtual Reality Mode. Please visit http://mozvr.com/downloads for more details.";
+
     // Holds the vr device and sensor
     this.hmdDevice = undefined;
     this.sensorDevice = undefined;
@@ -138,7 +140,7 @@ var CesiumVR = (function() {
       navigator.mozGetVRDevices(EnumerateVRDevices);
     } else {
       // No VR API detected...
-      that.errorHandler("A VR-enabled browser is required for this plugin. Please visit http://mozvr.com/download.html to download a build of Firefox VR.");
+      that.errorHandler(this.errorMsg);
     }
   };
 

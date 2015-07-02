@@ -3,14 +3,14 @@
 
 # cesium-vr
 
-A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR devices using a VR-enabled browser. Install [Firefox Nightly and the WebVR enabler](http://mozvr.com/downloads.html) and try the [live demo](http://nicta.github.io/cesium-vr/).
+A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR devices using a VR-enabled browser. Install [Firefox Nightly and the WebVR enabler](http://mozvr.com/downloads/) and try the [live demo](http://nicta.github.io/cesium-vr/).
 
 [![screengrab](images/screengrab.jpg)](http://nicta.github.io/cesium-vr/)
 
 ## Usage
 
 - Make sure you have the Oculus 0.5.x runtime installed.
-- Install [Firefox Nightly and the WebVR enabler](http://mozvr.com/downloads.html).
+- Install [Firefox Nightly and the WebVR enabler](http://mozvr.com/downloads/).
 - Run via a local http server from the project root directory, e.g. with node.js http-server
 
     ```
@@ -27,7 +27,7 @@ A plugin for [Cesium WebGL Virtual Globe](http://cesiumjs.org) to support VR dev
 If you are having any problems, visit [mozvr.com](http://mozvr.com) to check you have correctly configured your VR device for use in Firefox Nightly. If you're still having troubles, feel free to post an issue on the GitHub repository.
 
 ### Testing
-At time of writing we have tested **cesium-vr** in Firefox Nightly 41.0a1 (2015-05-13) on Windows and OSX using the Oculus Rift Development Kit 2 with Oculus Runtime 0.5.0.1.
+At time of writing we have tested **cesium-vr** with Cesium 1.10 in Firefox Nightly 41.0a1 (2015-05-13) on Windows and OSX using the Oculus Rift Development Kit 2 and Oculus Runtime 0.5.0.1.
 Stereo rendering should work on other platforms but WebVR may not.
 
 ## About
@@ -45,7 +45,7 @@ For each frame:
 
 ### Frustum offsetting
 We have applied a small modification to Cesium's PerspectiveFrustum class.
-This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas. These modifications can currently be found in a fork of Cesium found [here](https://github.com/craigsketchley/cesium/tree/frustumOffset) (we're hoping to get this into the main Cesium soon).
+This allows us to apply the required frustum offset e.g. so the standard globe doesn't render in the center of each canvas. These modifications are currently being patched into Cesium by replacing the cameras frustum object with our implementation.
 
 ### WebVR
 For more information regarding WebVR or the VR-enabled browsers, checkout [mozvr.com](http://mozvr.com), [Vladimir Vukićević's blog](http://blog.bitops.com/blog/2014/06/26/first-steps-for-vr-on-the-web/) (Firefox VR) or [Brandon Jones' blog](http://blog.tojicode.com/2014/07/bringing-vr-to-chrome.html) (Chrome VR).

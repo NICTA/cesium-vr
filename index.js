@@ -45,6 +45,11 @@ function createTerrainProvider() {
 function createScene(canvas) {
   var scene = new Cesium.Scene({canvas : canvas});
 
+  // Clone the frustum properties into our patched frustum object...
+  var patchedFrustum = scene.camera.frustum.clone(new PerspectiveFrustumPatch());
+  // Patch the camera frustum prototype...
+  scene.camera.frustum = patchedFrustum;
+
   var primitives = scene.primitives;
 
   var cb = new Cesium.Globe(ellipsoid);

@@ -1,3 +1,7 @@
+### v0.4 - 2015-05-21
+
+* Updated to latest Firefox WebVR API.
+
 ### v0.3 - 2014-12-18
 
 * Removed VR.js, now using WebVR, specifically Firefox VR build.

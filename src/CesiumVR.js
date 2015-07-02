@@ -140,6 +140,7 @@ var CesiumVR = (function() {
       navigator.mozGetVRDevices(EnumerateVRDevices);
     } else {
       // No VR API detected...
+      console.log("No WebVR API detected.");
       that.errorHandler(this.errorMsg);
     }
   };

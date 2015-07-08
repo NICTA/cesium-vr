@@ -8,6 +8,10 @@ var CesiumVR = (function() {
   // Given a hmd device and a eye, returns the aspect ratio for that eye
   function getAspectRatio(params) {
     var rect = params.renderRect;
+    if (typeof rect === 'undefined') {
+      // Must be polyfill device. Revert to browser window ratio.
+      rect = window.screen;
+    }
     return rect.width / rect.height;
   }
   
@@ -57,7 +61,10 @@ var CesiumVR = (function() {
     this.sensorDevice = undefined;
 
     this.firstTime = true;
-    this.refMtx = new Cesium.Matrix3();
+
+    this.refMtx = Cesium.Matrix3.clone(Cesium.Matrix3.IDENTITY, new Cesium.Matrix3());
+
+    this.previousDeviceRotation = Cesium.Quaternion.clone(Cesium.Quaternion.IDENTITY, new Cesium.Quaternion());
 
     // The Interpupillary Distance scalar
     this.IPDScale = scale > 0.0 ? scale : 1.0;
@@ -75,6 +82,8 @@ var CesiumVR = (function() {
           break;
         }
       }
+
+      console.log(devices);
 
       if (!that.hmdDevice) {
         // No HMD detected.
@@ -139,7 +148,7 @@ var CesiumVR = (function() {
     } else if (navigator.mozGetVRDevices) {
       navigator.mozGetVRDevices(EnumerateVRDevices);
     } else {
-      // No VR API detected...
+      // TODO: No VR API detected...
       console.log("No WebVR API detected.");
       that.errorHandler(this.errorMsg);
     }
@@ -228,6 +237,12 @@ var CesiumVR = (function() {
     Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2, camera.direction), camera.direction);
   };
 
+  /**
+   * Grab the camera orientation from component vectors into a 3x3 Matrix.
+   * 
+   * @param  {Cesium.Camera}  camera  The target camera
+   * @return {Cesium.Matrix3}         The rotation matrix of the target camera
+   */
   CesiumVR.getCameraRotationMatrix = function(camera) {
     var result = new Cesium.Matrix3();
     Cesium.Matrix3.setRow(result, 0, camera.right, result);
@@ -236,21 +251,32 @@ var CesiumVR = (function() {
     return result;
   };
 
-  CesiumVR.prototype.applyVRRotation = function(camera, prevCameraMatrix, rotation) {
-    var VRRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Matrix3()));
-    var sceneCameraMatrix = CesiumVR.getCameraRotationMatrix(camera);
-    if (this.firstTime) {
-      Cesium.Matrix3.inverse(VRRotationMatrix, this.refMtx);
-      Cesium.Matrix3.multiply(this.refMtx, sceneCameraMatrix, this.refMtx);
-    } else {
-      var temp = new Cesium.Matrix3();
-      Cesium.Matrix3.inverse(prevCameraMatrix, temp);
-      Cesium.Matrix3.multiply(temp, sceneCameraMatrix, temp);
-      Cesium.Matrix3.multiply(this.refMtx, temp, this.refMtx);
-    }
-    Cesium.Matrix3.multiply(VRRotationMatrix, this.refMtx, prevCameraMatrix);
-    CesiumVR.setCameraRotationMatrix(prevCameraMatrix, camera);
-    this.firstTime = false;
+// cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
+
+  /**
+   * Given a camera, the previous camera rotation matrix and a rotation quaternion, apply the rotation to the camera.
+   *
+   * @param  {Cesium.Camera}     camera           The camera to rotate
+   * @param  {Cesium.Matrix3}    prevCameraMatrix The cameras previous rotation state
+   * @param  {Cesium.Quaternion} rotation         The rotation to be applied
+   */
+  CesiumVR.prototype.applyVRRotation = function(camera, rotation) {
+
+    var vrRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Quaternion()));
+
+    // Translate camera back to origin
+    var pos = camera.position;
+    camera.position = new Cesium.Cartesian3(0.0,0.0,0.0);
+
+    // Create camera rotation as composite of VR rotation then original camera rotation
+    var cameraRotationMatrix = CesiumVR.getCameraRotationMatrix(camera);
+    var newRotation = Cesium.Matrix3.multiply(vrRotationMatrix, cameraRotationMatrix, new Cesium.Matrix3());
+
+    // rotate camera using matrix
+    CesiumVR.setCameraRotationMatrix(newRotation, camera);
+
+    // translate back to position
+    camera.position = pos;
   };
 
   /**
@@ -260,7 +286,7 @@ var CesiumVR = (function() {
    * @param  {Cesium.Camera} camera   The camera to normalise.
    */
   CesiumVR.prototype.levelCamera = function(camera) {
-    this.firstTime = true;
+    // this.firstTime = true;
     Cesium.Cartesian3.normalize(camera.position, camera.up);
     Cesium.Cartesian3.cross(camera.direction, camera.up, camera.right);
     Cesium.Cartesian3.cross(camera.up, camera.right, camera.direction);

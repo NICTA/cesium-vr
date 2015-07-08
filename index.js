@@ -148,22 +148,27 @@ function run() {
     scene.initializeFrame();
 
     if(vrEnabled){
-      // Take into account user head rotation
-      cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
-      var masterCam = camera.clone();
+      var rotation = cesiumVR.getRotation();
+
+      // Copy original camera without VR rotation applied
+      var originalCam = camera.clone();
+
+      // Apply user head rotation
+      cesiumVR.applyVRRotation(camera, rotation);
+      var VRCam = camera.clone();
 
       // Render right eye
-      cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
+      cesiumVR.configureSlaveCamera(VRCam, camera, 'right');
       scene.render();
 
       canvasCopy.copy(canvasL);
 
       // Render left eye
-      cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
+      cesiumVR.configureSlaveCamera(VRCam, camera, 'left');
       scene.render();
 
-      // Restore camera state
-      cesiumVR.configureSlaveCamera(masterCam, camera);
+      // Restore camera state before VR
+      cesiumVR.configureSlaveCamera(originalCam, camera);
     } else {
       scene.render();
     }
@@ -212,44 +217,61 @@ function run() {
 
   var velocity = 250;
 
+
+  var locationIndex = 0;
+
+  var nextLocation = function() {
+    locationIndex = (locationIndex + 1) % locations.length;
+    setCameraParams(locations[locationIndex], scene.camera);
+    // cesiumVR.levelCamera(scene.camera);
+  };
+
+  var prevLocation = function() {
+    locationIndex = (locationIndex === 0) ? locationIndex + locations.length - 1 : locationIndex - 1;
+    setCameraParams(locations[locationIndex], scene.camera);
+    // cesiumVR.levelCamera(scene.camera);
+  };
+
+  /* INPUT HANDLERS */
+
   // Basic WASD keys implemented w/ shift for speed up.
   var onKeyDown = function(e) {
-    if (e.keyCode === 'W'.charCodeAt(0)) {
-      // Move forward
-      velocities.forward = velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'S'.charCodeAt(0)) {
-      // Move backwards
-      velocities.forward = -velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'D'.charCodeAt(0)) {
-      // Move right
-      velocities.strafe = velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'A'.charCodeAt(0)) {
-      // Move left
-      velocities.strafe = -velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'Q'.charCodeAt(0)) {
-      // Move up
-      velocities.vertical = velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'E'.charCodeAt(0)) {
-      // Move down
-      velocities.vertical = -velocity;
-      e.preventDefault();
-    }
+    // if (e.keyCode === 'W'.charCodeAt(0)) {
+    //   // Move forward
+    //   velocities.forward = velocity;
+    //   e.preventDefault();
+    // }
+    // if (e.keyCode === 'S'.charCodeAt(0)) {
+    //   // Move backwards
+    //   velocities.forward = -velocity;
+    //   e.preventDefault();
+    // }
+    // if (e.keyCode === 'D'.charCodeAt(0)) {
+    //   // Move right
+    //   velocities.strafe = velocity;
+    //   e.preventDefault();
+    // }
+    // if (e.keyCode === 'A'.charCodeAt(0)) {
+    //   // Move left
+    //   velocities.strafe = -velocity;
+    //   e.preventDefault();
+    // }
+    // if (e.keyCode === 'Q'.charCodeAt(0)) {
+    //   // Move up
+    //   velocities.vertical = velocity;
+    //   e.preventDefault();
+    // }
+    // if (e.keyCode === 'E'.charCodeAt(0)) {
+    //   // Move down
+    //   velocities.vertical = -velocity;
+    //   e.preventDefault();
+    // }
     if (e.keyCode === 'L'.charCodeAt(0)) {
       // Level the camera to the horizon
       cesiumVR.levelCamera(scene.camera);
       e.preventDefault();
     }
-    if (e.keyCode === 'K'.charCodeAt(0)) {
+    if (e.keyCode === 'H'.charCodeAt(0)) {
       // Show the help text
       showHelpScreen();
       e.preventDefault();
@@ -274,9 +296,13 @@ function run() {
       cesiumVR.goFullscreenVR(container);
       e.preventDefault();
     }
-    if (typeof locations[e.keyCode] !== 'undefined') {
-      // Go to a location...
-      setCameraParams(locations[e.keyCode], scene.camera);
+    if (e.keyCode === 'Z'.charCodeAt(0)) {
+      // Go to previous location...
+      prevLocation();
+    }
+    if (e.keyCode === 'X'.charCodeAt(0)) {
+      // Go to next location...
+      nextLocation();
     }
   };
 
@@ -298,9 +324,53 @@ function run() {
     }
   };
 
-  window.addEventListener('resize', onResize, false);
   window.addEventListener('keydown', onKeyDown, false);
   window.addEventListener('keyup', onKeyUp, false);
+
+
+  /* TOUCH HANDLERS FOR MOBILE DEVICES */
+
+  var holdTimeout = null;
+  var tapTimeout = null;
+
+  var DOUBLETAP_TIME = 500;
+  var HOLDTAP_TIME   = 1000;
+
+  var onTouch = function(e) {
+    // Checks for double taps...
+    if (tapTimeout == null) {
+      // First tap... set timeout callback, cancelling double tap if timed out.
+      tapTimeout = setTimeout(function() {
+        // Single tap!
+        tapTimeout = null;
+      }, DOUBLETAP_TIME);
+
+      // Setup hold timeout callback...
+      holdTimeout = setTimeout(function() {
+        // Cycle through locations...
+        nextLocation();
+        // Cancel a double tap after a hold
+        tapTimeout = null;
+      }, HOLDTAP_TIME);
+    } else {
+      // Double tap!
+      clearTimeout(tapTimeout);
+      tapTimeout = null;
+      // Go full screen...
+      cesiumVR.goFullscreenVR(container);
+    }
+    e.preventDefault();
+  };
+
+  var onRelease = function(e) {
+    // If released, cancel the hold timeout callback...
+    clearTimeout(holdTimeout);
+  };
+
+  window.addEventListener('touchstart', onTouch, false);
+  window.addEventListener('touchend', onRelease, false);
+
+  window.addEventListener('resize', onResize, false);
   window.setTimeout(onResize, 60);
 
   var showHelpScreen = function() {
@@ -310,7 +380,8 @@ function run() {
       "Enter \t- go into VR Mode",
       "Esc \t\t- Exit VR Mode",
       "",
-      "1-6 \t\t- Jump to a location in the globe",
+      "Z   \t\t- Jump to next location",
+      "X   \t\t- Jump to previous location",
       "L   \t\t- level the camera to the globe",
       "",
       "WASD  \t- Move horizontally",
@@ -318,7 +389,7 @@ function run() {
       "Shift \t- Increase movement speed",
       "",
       "F   \t\t- toggle FPS counter",
-      "K   \t\t- show this help text",
+      "H   \t\t- show this help text",
     ];
 
     alert(helpString.join('\n')); 

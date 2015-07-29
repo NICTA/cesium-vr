@@ -1,6 +1,7 @@
 var CesiumVR = (function() {
   "use strict";
 
+  // Displays a prompt given an error message
   function defaultErrorHandler(msg) {
     alert(msg);
   }
@@ -60,9 +61,8 @@ var CesiumVR = (function() {
     this.hmdDevice = undefined;
     this.sensorDevice = undefined;
 
-    this.firstTime = true;
-
-    this.refMtx = Cesium.Matrix3.clone(Cesium.Matrix3.IDENTITY, new Cesium.Matrix3());
+    // Holds the heading offset to be applied to ensure forward is 
+    this.headingOffsetMatrix = Cesium.Matrix3.clone(Cesium.Matrix3.IDENTITY, new Cesium.Matrix3());
 
     this.previousDeviceRotation = Cesium.Quaternion.clone(Cesium.Quaternion.IDENTITY, new Cesium.Quaternion());
 
@@ -231,6 +231,12 @@ var CesiumVR = (function() {
     Cesium.Cartesian3.add(slave.position, tempRight, slave.position);
   };
 
+  /**
+   * Given a rotation matrix and a camera, it sets the cameras rotation to the rotation matrix.
+   * 
+   * @param {Cesium.Matrix3} rotation  the rotation matrix
+   * @param {Cesium.Camera}  camera    the camera to be rotated
+   */
   CesiumVR.setCameraRotationMatrix = function(rotation, camera) {
     Cesium.Matrix3.getRow(rotation, 0, camera.right);
     Cesium.Matrix3.getRow(rotation, 1, camera.up);
@@ -251,25 +257,28 @@ var CesiumVR = (function() {
     return result;
   };
 
-// cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
-
   /**
-   * Given a camera, the previous camera rotation matrix and a rotation quaternion, apply the rotation to the camera.
+   * Given a camera and a rotation quaternion, apply the rotation to the camera.
    *
+   * This assumes the incoming camera has no previous VR rotation applied.
+   * 
    * @param  {Cesium.Camera}     camera           The camera to rotate
-   * @param  {Cesium.Matrix3}    prevCameraMatrix The cameras previous rotation state
    * @param  {Cesium.Quaternion} rotation         The rotation to be applied
    */
   CesiumVR.prototype.applyVRRotation = function(camera, rotation) {
-
     var vrRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Quaternion()));
 
     // Translate camera back to origin
     var pos = camera.position;
     camera.position = new Cesium.Cartesian3(0.0,0.0,0.0);
 
-    // Create camera rotation as composite of VR rotation then original camera rotation
+    // Get camera rotation matrix
     var cameraRotationMatrix = CesiumVR.getCameraRotationMatrix(camera);
+
+    // Apply the heading offset to camera
+    Cesium.Matrix3.multiply(this.headingOffsetMatrix, cameraRotationMatrix, cameraRotationMatrix);
+
+    // Apply VR rotation to offset camera rotation matrix
     var newRotation = Cesium.Matrix3.multiply(vrRotationMatrix, cameraRotationMatrix, new Cesium.Matrix3());
 
     // rotate camera using matrix
@@ -286,17 +295,30 @@ var CesiumVR = (function() {
    * @param  {Cesium.Camera} camera   The camera to normalise.
    */
   CesiumVR.prototype.levelCamera = function(camera) {
-    // this.firstTime = true;
     Cesium.Cartesian3.normalize(camera.position, camera.up);
     Cesium.Cartesian3.cross(camera.direction, camera.up, camera.right);
     Cesium.Cartesian3.cross(camera.up, camera.right, camera.direction);
   };
 
   /**
-   * Reset the HMD sensor.
+   * Reset the HMD sensor heading.
    */
-  CesiumVR.prototype.zeroSensor = function() {
-    this.sensorDevice.resetSensor();
+  CesiumVR.prototype.recenterHeading = function() {
+    // Isolate the heading (yaw) angle to apply as an offset
+    // Note: y is the yaw axis of rotation for the VR device.
+    var q = this.getRotation();
+
+    // Zero out rotation axes we're not interested in
+    q.x = 0;
+    q.z = 0;
+
+    // Renormalise quaternion
+    var mag = Math.sqrt(q.y * q.y + q.w * q.w);
+    q.y /= mag;
+    q.w /= mag;
+
+    // Save rotation as Matrix3
+    this.headingOffsetMatrix = Cesium.Matrix3.fromQuaternion(q);
   };
 
   /**

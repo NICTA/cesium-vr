@@ -15,7 +15,7 @@ document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "
 
 var canvasCopy = new CanvasCopy(canvasR, false);
 
-var WakeLock = Util.getWakeLock();
+var WakeLock = CesiumVRUtil.getWakeLock();
 var wakelock = new WakeLock();
 
 var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
@@ -278,7 +278,7 @@ function run() {
     document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
     onResize();
     
-    if (Util.isMobile()) {
+    if (CesiumVRUtil.isMobile()) {
       if (vrEnabled) {
         // Request landscape orientation
         screen.orientation.lock('landscape');
@@ -320,7 +320,7 @@ function run() {
       "Hold Touch - Jump to next location"
     ];
 
-    if (Util.isMobile()) {
+    if (CesiumVRUtil.isMobile()) {
       alert(mobileHelpString.join('\n')); 
     } else {
       alert(desktopHelpString.join('\n')); 

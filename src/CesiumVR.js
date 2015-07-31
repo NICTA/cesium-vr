@@ -60,7 +60,7 @@ var CesiumVR = (function() {
     // Holds the vr device and sensor
     this.hmdDevice = undefined;
     this.sensorDevice = undefined;
-    this.matchRealAndVirtualHorizons = true;
+    this.matchRealAndVirtualHorizons = false;
 
     // Holds the heading offset to be applied to ensure forward is 
     this.headingOffsetMatrix = Cesium.Matrix3.clone(Cesium.Matrix3.IDENTITY, new Cesium.Matrix3());
@@ -269,24 +269,17 @@ var CesiumVR = (function() {
   CesiumVR.prototype.applyVRRotation = function(camera, rotation) {
     var vrRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Quaternion()));
 
+    // if matching horizons
+    if (this.matchRealAndVirtualHorizons) {
+      camera.lookUp(-camera.pitch);
+    }
+
     // Translate camera back to origin
     var pos = camera.position;
     camera.position = new Cesium.Cartesian3(0.0,0.0,0.0);
 
     // Get camera rotation matrix
     var cameraRotationMatrix = CesiumVR.getCameraRotationMatrix(camera);
-
-    // if matching horizons
-    if (this.matchRealAndVirtualHorizons) {
-      var up        = Cesium.Cartesian3.normalize(pos, new Cesium.Cartesian3());
-      var right     = Cesium.Cartesian3.cross(camera.direction, up, new Cesium.Cartesian3());
-      var direction = Cesium.Cartesian3.cross(up, right, new Cesium.Cartesian3());
-
-      // Set camera rotation matrix to match virtual horizon with heading
-      Cesium.Matrix3.setRow(cameraRotationMatrix, 0, right, cameraRotationMatrix);
-      Cesium.Matrix3.setRow(cameraRotationMatrix, 1, up, cameraRotationMatrix);
-      Cesium.Matrix3.setRow(cameraRotationMatrix, 2, Cesium.Cartesian3.negate(direction, new Cesium.Cartesian3()), cameraRotationMatrix);
-    }
 
     // Apply the heading offset to camera
     Cesium.Matrix3.multiply(this.headingOffsetMatrix, cameraRotationMatrix, cameraRotationMatrix);

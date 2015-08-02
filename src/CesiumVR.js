@@ -264,13 +264,13 @@ var CesiumVR = (function() {
    * This assumes the incoming camera has no previous VR rotation applied.
    * 
    * @param  {Cesium.Camera}     camera           The camera to rotate
-   * @param  {Cesium.Quaternion} rotation         The rotation to be applied
    */
-  CesiumVR.prototype.applyVRRotation = function(camera, rotation) {
-    var vrRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Quaternion()));
+  CesiumVR.prototype.applyVRRotation = function(camera) {
+    var vrRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(this.getRotation(), new Cesium.Quaternion()));
 
     // if matching horizons
     if (this.matchRealAndVirtualHorizons) {
+      camera.twistRight(-camera.roll);
       camera.lookUp(-camera.pitch);
     }
 

@@ -119,16 +119,14 @@ function run() {
 
   var tick = function() {
     // TODO: Doing this outside the vr rotation breaks mouse interaction etc
-    // scene.initializeFrame(); // Why?
+    scene.initializeFrame();
 
     if(vrEnabled){
-      var rotation = cesiumVR.getRotation();
-
       // Copy original camera without VR rotation applied
       var originalCam = camera.clone();
 
       // Apply user head rotation
-      cesiumVR.applyVRRotation(camera, rotation);
+      cesiumVR.applyVRRotation(camera);
       var VRCam = camera.clone();
 
       // Render right eye

@@ -83,8 +83,6 @@ var CesiumVR = (function() {
         }
       }
 
-      console.log(devices);
-
       if (!that.hmdDevice) {
         // No HMD detected.
         that.errorHandler("No HMD detected");
@@ -148,8 +146,7 @@ var CesiumVR = (function() {
     } else if (navigator.mozGetVRDevices) {
       navigator.mozGetVRDevices(EnumerateVRDevices);
     } else {
-      // TODO: No VR API detected...
-      console.log("No WebVR API detected.");
+      // No VR API detected...
       that.errorHandler(this.errorMsg);
     }
   };

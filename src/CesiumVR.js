@@ -60,7 +60,6 @@ var CesiumVR = (function() {
     // Holds the vr device and sensor
     this.hmdDevice = undefined;
     this.sensorDevice = undefined;
-    this.matchRealAndVirtualHorizons = false;
 
     // Holds the heading offset to be applied to ensure forward is 
     this.headingOffsetMatrix = Cesium.Matrix3.clone(Cesium.Matrix3.IDENTITY, new Cesium.Matrix3());
@@ -267,12 +266,6 @@ var CesiumVR = (function() {
    */
   CesiumVR.prototype.applyVRRotation = function(camera) {
     var vrRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(this.getRotation(), new Cesium.Quaternion()));
-
-    // if matching horizons
-    if (this.matchRealAndVirtualHorizons) {
-      camera.twistRight(-camera.roll);
-      camera.lookUp(-camera.pitch);
-    }
 
     // Translate camera back to origin
     var pos = camera.position;

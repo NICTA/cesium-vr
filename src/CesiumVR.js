@@ -1,6 +1,7 @@
 var CesiumVR = (function() {
   "use strict";
 
+  // Displays a prompt given an error message
   function defaultErrorHandler(msg) {
     alert(msg);
   }
@@ -8,6 +9,10 @@ var CesiumVR = (function() {
   // Given a hmd device and a eye, returns the aspect ratio for that eye
   function getAspectRatio(params) {
     var rect = params.renderRect;
+    if (typeof rect === 'undefined') {
+      // Must be polyfill device. Revert to browser window ratio.
+      rect = window.screen;
+    }
     return rect.width / rect.height;
   }
   
@@ -56,8 +61,10 @@ var CesiumVR = (function() {
     this.hmdDevice = undefined;
     this.sensorDevice = undefined;
 
-    this.firstTime = true;
-    this.refMtx = new Cesium.Matrix3();
+    // Holds the heading offset to be applied to ensure forward is 
+    this.headingOffsetMatrix = Cesium.Matrix3.clone(Cesium.Matrix3.IDENTITY, new Cesium.Matrix3());
+
+    this.previousDeviceRotation = Cesium.Quaternion.clone(Cesium.Quaternion.IDENTITY, new Cesium.Quaternion());
 
     // The Interpupillary Distance scalar
     this.IPDScale = scale > 0.0 ? scale : 1.0;
@@ -75,6 +82,8 @@ var CesiumVR = (function() {
           break;
         }
       }
+
+      console.log(devices);
 
       if (!that.hmdDevice) {
         // No HMD detected.
@@ -139,7 +148,7 @@ var CesiumVR = (function() {
     } else if (navigator.mozGetVRDevices) {
       navigator.mozGetVRDevices(EnumerateVRDevices);
     } else {
-      // No VR API detected...
+      // TODO: No VR API detected...
       console.log("No WebVR API detected.");
       that.errorHandler(this.errorMsg);
     }
@@ -222,12 +231,24 @@ var CesiumVR = (function() {
     Cesium.Cartesian3.add(slave.position, tempRight, slave.position);
   };
 
+  /**
+   * Given a rotation matrix and a camera, it sets the cameras rotation to the rotation matrix.
+   * 
+   * @param {Cesium.Matrix3} rotation  the rotation matrix
+   * @param {Cesium.Camera}  camera    the camera to be rotated
+   */
   CesiumVR.setCameraRotationMatrix = function(rotation, camera) {
     Cesium.Matrix3.getRow(rotation, 0, camera.right);
     Cesium.Matrix3.getRow(rotation, 1, camera.up);
     Cesium.Cartesian3.negate(Cesium.Matrix3.getRow(rotation, 2, camera.direction), camera.direction);
   };
 
+  /**
+   * Grab the camera orientation from component vectors into a 3x3 Matrix.
+   * 
+   * @param  {Cesium.Camera}  camera  The target camera
+   * @return {Cesium.Matrix3}         The rotation matrix of the target camera
+   */
   CesiumVR.getCameraRotationMatrix = function(camera) {
     var result = new Cesium.Matrix3();
     Cesium.Matrix3.setRow(result, 0, camera.right, result);
@@ -236,21 +257,34 @@ var CesiumVR = (function() {
     return result;
   };
 
-  CesiumVR.prototype.applyVRRotation = function(camera, prevCameraMatrix, rotation) {
-    var VRRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(rotation, new Cesium.Matrix3()));
-    var sceneCameraMatrix = CesiumVR.getCameraRotationMatrix(camera);
-    if (this.firstTime) {
-      Cesium.Matrix3.inverse(VRRotationMatrix, this.refMtx);
-      Cesium.Matrix3.multiply(this.refMtx, sceneCameraMatrix, this.refMtx);
-    } else {
-      var temp = new Cesium.Matrix3();
-      Cesium.Matrix3.inverse(prevCameraMatrix, temp);
-      Cesium.Matrix3.multiply(temp, sceneCameraMatrix, temp);
-      Cesium.Matrix3.multiply(this.refMtx, temp, this.refMtx);
-    }
-    Cesium.Matrix3.multiply(VRRotationMatrix, this.refMtx, prevCameraMatrix);
-    CesiumVR.setCameraRotationMatrix(prevCameraMatrix, camera);
-    this.firstTime = false;
+  /**
+   * Given a camera and a rotation quaternion, apply the rotation to the camera.
+   *
+   * This assumes the incoming camera has no previous VR rotation applied.
+   * 
+   * @param  {Cesium.Camera}     camera           The camera to rotate
+   */
+  CesiumVR.prototype.applyVRRotation = function(camera) {
+    var vrRotationMatrix = Cesium.Matrix3.fromQuaternion(Cesium.Quaternion.inverse(this.getRotation(), new Cesium.Quaternion()));
+
+    // Translate camera back to origin
+    var pos = camera.position;
+    camera.position = new Cesium.Cartesian3(0.0,0.0,0.0);
+
+    // Get camera rotation matrix
+    var cameraRotationMatrix = CesiumVR.getCameraRotationMatrix(camera);
+
+    // Apply the heading offset to camera
+    Cesium.Matrix3.multiply(this.headingOffsetMatrix, cameraRotationMatrix, cameraRotationMatrix);
+
+    // Apply VR rotation to offset camera rotation matrix
+    var newRotation = Cesium.Matrix3.multiply(vrRotationMatrix, cameraRotationMatrix, new Cesium.Matrix3());
+
+    // rotate camera using matrix
+    CesiumVR.setCameraRotationMatrix(newRotation, camera);
+
+    // translate back to position
+    camera.position = pos;
   };
 
   /**
@@ -260,17 +294,30 @@ var CesiumVR = (function() {
    * @param  {Cesium.Camera} camera   The camera to normalise.
    */
   CesiumVR.prototype.levelCamera = function(camera) {
-    this.firstTime = true;
     Cesium.Cartesian3.normalize(camera.position, camera.up);
     Cesium.Cartesian3.cross(camera.direction, camera.up, camera.right);
     Cesium.Cartesian3.cross(camera.up, camera.right, camera.direction);
   };
 
   /**
-   * Reset the HMD sensor.
+   * Reset the HMD sensor heading.
    */
-  CesiumVR.prototype.zeroSensor = function() {
-    this.sensorDevice.resetSensor();
+  CesiumVR.prototype.recenterHeading = function() {
+    // Isolate the heading (yaw) angle to apply as an offset
+    // Note: y is the yaw axis of rotation for the VR device.
+    var q = this.getRotation();
+
+    // Zero out rotation axes we're not interested in
+    q.x = 0;
+    q.z = 0;
+
+    // Renormalise quaternion
+    var mag = Math.sqrt(q.y * q.y + q.w * q.w);
+    q.y /= mag;
+    q.w /= mag;
+
+    // Save rotation as Matrix3
+    this.headingOffsetMatrix = Cesium.Matrix3.fromQuaternion(q);
   };
 
   /**

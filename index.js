@@ -15,7 +15,10 @@ document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "
 
 var canvasCopy = new CanvasCopy(canvasR, false);
 
-var ellipsoid = Cesium.Ellipsoid.WGS84;
+var WakeLock = CesiumVRUtil.getWakeLock();
+var wakelock = new WakeLock();
+
+var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
 var imageryUrl = 'lib/cesium/Source/Assets/Textures/';
 
 function createImageryProvider() {
@@ -103,84 +106,53 @@ var setCameraParams = function(_, camera) {
   camera.direction = _.direction;
 };
 
-// Used for movement, update the camera position based on the dt (in secs) and the velocities.
-var move = function(camera, dt, velocities, multiplier) {
-  Cesium.Cartesian3.add(
-    camera.position,
-    Cesium.Cartesian3.multiplyByScalar(camera.direction, dt * velocities.forward * multiplier, new Cesium.Cartesian3()),
-    camera.position);
-  Cesium.Cartesian3.add(camera.position,
-    Cesium.Cartesian3.multiplyByScalar(camera.right, dt * velocities.strafe * multiplier, new Cesium.Cartesian3()),
-    camera.position);
-  Cesium.Cartesian3.add(camera.position,
-    Cesium.Cartesian3.multiplyByScalar(camera.up, dt * velocities.vertical * multiplier, new Cesium.Cartesian3()),
-    camera.position);
-};
-
 var cesiumVR = new CesiumVR(100.0, run);
 
 var container = document.getElementById('container');
-var uiDiv     = document.getElementById('ui');
 
 function run() {
   var scene = createScene(canvasL);
-  var ui = new VRUI(uiDiv, cesiumVR.getOffsets(), vrEnabled);
-
   var camera = scene.camera;
 
-  var prevCameraRotation;
 
-  var ellipsoid = Cesium.Ellipsoid.clone(Cesium.Ellipsoid.WGS84);
-
-  var velocities = {
-    forward  : 0.0,
-    strafe   : 0.0,
-    vertical : 0.0
-  };
-
-  var multiplier = 1.0;
-
-  var lastTime = new Date().getTime();
-  var currentTime = new Date().getTime();
+  /* MAIN UPDATE LOOP */
 
   var tick = function() {
     // TODO: Doing this outside the vr rotation breaks mouse interaction etc
     scene.initializeFrame();
 
     if(vrEnabled){
-      // Take into account user head rotation
-      cesiumVR.applyVRRotation(camera, CesiumVR.getCameraRotationMatrix(camera), cesiumVR.getRotation());
-      var masterCam = camera.clone();
+      // Copy original camera without VR rotation applied
+      var originalCam = camera.clone();
+
+      // Apply user head rotation
+      cesiumVR.applyVRRotation(camera);
+      var VRCam = camera.clone();
 
       // Render right eye
-      cesiumVR.configureSlaveCamera(masterCam, camera, 'right');
+      cesiumVR.configureSlaveCamera(VRCam, camera, 'right');
       scene.render();
 
       canvasCopy.copy(canvasL);
 
       // Render left eye
-      cesiumVR.configureSlaveCamera(masterCam, camera, 'left');
+      cesiumVR.configureSlaveCamera(VRCam, camera, 'left');
       scene.render();
 
-      // Restore camera state
-      cesiumVR.configureSlaveCamera(masterCam, camera);
+      // Restore camera state before VR
+      cesiumVR.configureSlaveCamera(originalCam, camera);
     } else {
       scene.render();
     }
-
-    // Move camera based on current velocities.
-    currentTime = new Date().getTime();
-    move(camera, (currentTime - lastTime) / 1000.0, velocities, multiplier);
-    lastTime = currentTime;
-
-    ui.update();
 
     Cesium.requestAnimationFrame(tick);
   };
 
   tick();
 
-  // Resize handler
+
+  /* RESIZE HANDLER */
+
   var onResizeScene = function(canvas, scene) {
     // Render at higher resolution so the result is still sharp
     // when magnified by the barrel distortion
@@ -203,70 +175,29 @@ function run() {
     onResizeScene(canvasL, scene);
   };
 
-  var setVRContainers = function() {
-    ui.setStereo(vrEnabled);
-    document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "visible" : "hidden";
-    document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
-    onResize();
+  window.addEventListener('resize', onResize, false);
+  window.setTimeout(onResize, 60);
+
+
+  /* KEYBOARD INPUT HANDLERS */
+
+  var locationIndex = 0;
+
+  var nextLocation = function() {
+    locationIndex = (locationIndex + 1) % locations.length;
+    setCameraParams(locations[locationIndex], scene.camera);
   };
 
-  var velocity = 250;
+  var prevLocation = function() {
+    locationIndex = (locationIndex === 0) ? locationIndex + locations.length - 1 : locationIndex - 1;
+    setCameraParams(locations[locationIndex], scene.camera);
+  };
 
   // Basic WASD keys implemented w/ shift for speed up.
   var onKeyDown = function(e) {
-    if (e.keyCode === 'W'.charCodeAt(0)) {
-      // Move forward
-      velocities.forward = velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'S'.charCodeAt(0)) {
-      // Move backwards
-      velocities.forward = -velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'D'.charCodeAt(0)) {
-      // Move right
-      velocities.strafe = velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'A'.charCodeAt(0)) {
-      // Move left
-      velocities.strafe = -velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'Q'.charCodeAt(0)) {
-      // Move up
-      velocities.vertical = velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'E'.charCodeAt(0)) {
-      // Move down
-      velocities.vertical = -velocity;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'L'.charCodeAt(0)) {
-      // Level the camera to the horizon
-      cesiumVR.levelCamera(scene.camera);
-      e.preventDefault();
-    }
-    if (e.keyCode === 'K'.charCodeAt(0)) {
+    if (e.keyCode === 'H'.charCodeAt(0)) {
       // Show the help text
-      showHelpScreen();
-      e.preventDefault();
-    }
-    if (e.keyCode === 'F'.charCodeAt(0)) {
-      // Toggle the FPS counter
-      ui.toggleShow();
-      e.preventDefault();
-    }
-    if (e.keyCode === 'P'.charCodeAt(0)) {
-      // Print current camera position
-      console.log(JSON.stringify(getCameraParams(scene.camera)));
-      e.preventDefault();
-    }
-    if (e.keyCode === 16) { // Shift
-      // Speed up user movement
-      multiplier = 2.0;
+      cesiumVR.recenterHeading();
       e.preventDefault();
     }
     if (e.keyCode === 13) { // Enter
@@ -274,62 +205,125 @@ function run() {
       cesiumVR.goFullscreenVR(container);
       e.preventDefault();
     }
-    if (typeof locations[e.keyCode] !== 'undefined') {
-      // Go to a location...
-      setCameraParams(locations[e.keyCode], scene.camera);
+    if (e.keyCode === 'Z'.charCodeAt(0)) {
+      // Go to previous location...
+      prevLocation();
+      e.preventDefault();
+    }
+    if (e.keyCode === 'X'.charCodeAt(0) ||
+        e.keyCode === ' '.charCodeAt(0)) { // X or space
+      // Go to next location...
+      nextLocation();
+      e.preventDefault();
     }
   };
 
-  var onKeyUp = function(e) {
-    if (e.keyCode === 'W'.charCodeAt(0) || e.keyCode === 'S'.charCodeAt(0)) {
-      velocities.forward = 0;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'D'.charCodeAt(0) || e.keyCode === 'A'.charCodeAt(0)) {
-      velocities.strafe = 0;
-      e.preventDefault();
-    }
-    if (e.keyCode === 'Q'.charCodeAt(0) || e.keyCode === 'E'.charCodeAt(0)) {
-      velocities.vertical = 0;
-      e.preventDefault();
-    }
-    if (e.keyCode === 16) { // Shift
-      multiplier = 1.0;
-    }
-  };
-
-  window.addEventListener('resize', onResize, false);
   window.addEventListener('keydown', onKeyDown, false);
-  window.addEventListener('keyup', onKeyUp, false);
-  window.setTimeout(onResize, 60);
+
+
+  /* TOUCH HANDLERS FOR MOBILE DEVICES */
+
+  var holdTimeout = null;
+  var tapTimeout = null;
+
+  var DOUBLETAP_TIME = 500;
+  var HOLDTAP_TIME   = 1000;
+
+  var onTouch = function(e) {
+    // Checks for double taps...
+    if (tapTimeout == null) {
+      // First tap... set timeout callback, cancelling double tap if timed out.
+      tapTimeout = setTimeout(function() {
+        // Single tap!
+        tapTimeout = null;
+      }, DOUBLETAP_TIME);
+
+      // Setup hold timeout callback...
+      holdTimeout = setTimeout(function() {
+        // Cycle through locations...
+        nextLocation();
+        // Cancel a double tap after a hold
+        tapTimeout = null;
+      }, HOLDTAP_TIME);
+    } else {
+      // Double tap!
+      clearTimeout(tapTimeout);
+      tapTimeout = null;
+      // Go full screen...
+      cesiumVR.goFullscreenVR(container);
+    }
+    e.preventDefault();
+  };
+
+  var onRelease = function(e) {
+    // If released, cancel the hold timeout callback...
+    clearTimeout(holdTimeout);
+  };
+
+  window.addEventListener('touchstart', onTouch, false);
+  window.addEventListener('touchend', onRelease, false);
+
+
+  /* VR MODE HANDLER */
+
+  var fullscreenchange = container.mozRequestFullScreen ? "mozfullscreenchange" : "webkitfullscreenchange";
+
+  var onFullscreenChange = function() {
+    vrEnabled = document.mozFullScreenElement || document.webkitFullscreenElement;
+
+    // Set eye containers
+    document.getElementById("cesiumContainerRight").style.visibility = vrEnabled ? "visible" : "hidden";
+    document.getElementById("cesiumContainerLeft").style.width = vrEnabled ? "50%" : "100%";
+    onResize();
+    
+    if (CesiumVRUtil.isMobile()) {
+      if (vrEnabled) {
+        // Request landscape orientation
+        screen.orientation.lock('landscape');
+        // Request a wakelock if vr enabled and mobile
+        wakelock.request();
+      } else {
+        // Unlock screen orientation
+        screen.orientation.unlock();
+        // Release the wakelock
+        wakelock.release();
+      }
+    }
+  };
+
+  document.addEventListener(fullscreenchange, onFullscreenChange, false);
+
+
+  /* HELP ALERT */
 
   var showHelpScreen = function() {
-    var helpString = [
+    var desktopHelpString = [
       "Demo controls:",
       "",
-      "Enter \t- go into VR Mode",
-      "Esc \t\t- Exit VR Mode",
+      "Enter - go into VR Mode",
+      "Esc   - Exit VR Mode",
       "",
-      "1-6 \t\t- Jump to a location in the globe",
-      "L   \t\t- level the camera to the globe",
+      "Z     - Jump to next location",
+      "X     - Jump to previous location",
       "",
-      "WASD  \t- Move horizontally",
-      "QE  \t\t- Move vertically",
-      "Shift \t- Increase movement speed",
-      "",
-      "F   \t\t- toggle FPS counter",
-      "K   \t\t- show this help text",
+      "H     - Reset the VR device"
     ];
 
-    alert(helpString.join('\n')); 
-  };
+    var mobileHelpString = [
+      "Demo controls:",
+      "",
+      "Double Tap - go into VR Mode",
+      "Back       - Exit VR Mode",
+      "",
+      "Hold Touch - Jump to next location"
+    ];
 
-  // Enable/disable VR mode when entering/leaving fullscreen.
-  var fullscreenchange = container.mozRequestFullScreen ? "mozfullscreenchange" : "webkitfullscreenchange";
-  document.addEventListener(fullscreenchange, function() {
-    vrEnabled = document.mozFullScreenElement || document.webkitFullscreenElement;
-    setVRContainers();
-  }, false);
+    if (CesiumVRUtil.isMobile()) {
+      alert(mobileHelpString.join('\n')); 
+    } else {
+      alert(desktopHelpString.join('\n')); 
+    }
+  };
 
   showHelpScreen();
 }

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <title>Hello Virtual World!</title>
+<script src="lib/webvr-polyfill.js"></script>
 <script src="lib/cesium/Cesium.js"></script>
 <style>
 @import url(lib/cesium/Widgets/widgets.css);
@@ -49,21 +50,6 @@ body {
   height: 100%;
 }
 
-.fps {
-  display: inline-block;
-  position: relative;
-  top: 50%;
-  left: 50%;
-  font-size: 1em;
-  font-family: verdana, sans-serif;
-  color: #505050;
-  padding: 2px 5px;
-  background: #dddddd;
-  border-radius: 0.2em;
-  user-select: none;
-  cursor: default;
-}
-
 </style>
 </head>
 <body>
@@ -72,16 +58,13 @@ body {
     <div id="cesiumContainerLeft" class="eye"></div>
     <!-- The right eye canvas container -->
     <div id="cesiumContainerRight" class="eye"></div>
-    <!-- Holds any ui overlay elements, e.g. fps -->
-    <div id="ui" class="fit"></div>
   </div>
 
   <!-- library -->
   <script src="src/PerspectiveFrustumPatch.js"></script>
-  <script src="src/CesiumVR.js"></script>
   <script src="src/CanvasCopy.js"></script>
-  <script src="src/FPS.js"></script>
-  <script src="src/VRUI.js"></script>
+  <script src="src/CesiumVR.js"></script>
+  <script src="src/CesiumVRUtil.js"></script>
 
   <!-- app -->
   <script src="locations.js"></script>

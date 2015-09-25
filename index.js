@@ -123,11 +123,11 @@ function run() {
 
     if(vrEnabled){
       // Copy original camera without VR rotation applied
-      var originalCam = camera.clone();
+      var originalCam = Cesium.Camera.clone(camera);
 
       // Apply user head rotation
       cesiumVR.applyVRRotation(camera);
-      var VRCam = camera.clone();
+      var VRCam = Cesium.Camera.clone(camera);
 
       // Render right eye
       cesiumVR.configureSlaveCamera(VRCam, camera, 'right');

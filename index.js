@@ -37,7 +37,7 @@ function createTerrainProvider() {
     return new Cesium.EllipsoidTerrainProvider();
   } else {
     return new Cesium.CesiumTerrainProvider({
-      url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'
+      url : '//assets.agi.com/stk-terrain/world'
     });
   }
 }
